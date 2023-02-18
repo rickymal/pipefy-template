@@ -1,0 +1,10 @@
+{
+  "editor.tokenColorCustomizations": {
+    "[Dracula]": {
+      "strings": "#edf106",
+      "keywords": {
+        "def" : "#ffffff"
+      }
+    }
+  }
+}
