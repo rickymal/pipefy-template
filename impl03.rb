@@ -2,16 +2,20 @@ require_relative './impl03.2.rb'
 
 module Program
 
-    def t1 data
-        @hfb1 << 10
+    def state()
+        return :open
+    end
+
+    def t1(data)
+        data + 1
     end
 
     def t2 
-        @hfb2
+        @hfb << 10
     end
 
-    def t3 multi
-
+    def t3(batch)
+        batch.map {|it| it + 10}
     end
 
     def report()
@@ -22,21 +26,25 @@ module Program
 end
 
 # Por hora, pensar apenas no programa
-class AbstractETL < Lambda::Dashboard
+class Pipeline < Lambda::Dashboard
+
+    # Aqui entrada o Lambda
+    def build_klass()
+        return Class.new().include Program
+    end
 
     def dashboard(drawer)
 
-        drawer.source OnDemmand # Criará o método 'run'
-        drawer.flow :t1, nil
-        drawer.flow :t2, Darray, [10, 10], {}, gateway_method: :hfb
-        drawer.flow :t3, nil
+        drawer.flow :t1
+        drawer.flow :t2, Tentatives
+        drawer.flow :t3
 
         drawer.assign()
     end
 end
 
 
-class ETL < AbstractETL
+class ETL < Pipeline
     include Program
 end
 
