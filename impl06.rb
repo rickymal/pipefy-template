@@ -7,21 +7,54 @@ require 'async'
 require 'async/queue'
 require 'pry-stack_explorer'
 
+module DefaultWorker
+    def get_source_queue()
+        return Async::LimitedQueue.new 20
+    end
+
+    def get_flow_queue()
+        return Async::LimitedQueue.new 20
+    end
+end
+
+require 'concurrent'
+require 'concurrent-edge'
+
+class Env
+    def initialize(procedures)
+        @procedures = procedures
+        @queue = Concurrent::Promises::Channel.new 10
+    end
+
+    def send_take(content)
+        @procedures.inject(content) {|it, nxt| nxt.call it}
+    end
+
+end
+
+
+
 module Schema
+    include DefaultWorker
+
     def initialize(schema_i, schema_o, worker, fb)
         @inp = schema_i
         @out = schema_o
-        @wor = worker
+
+        @inp = Env.new schema_i
+        @out = Env.new schema_o
+
+        
         @fb = fb
         @worker = worker
 
-        @ch = Async::LimitedQueue.new(20)
-        @io = Async::LimitedQueue.new(20)
+        @ch = get_source_queue()
+        @io = get_flow_queue()
 
         worker.async do 
             Async::Task.current.annotate "Input between source and first pipe"
             while resp = @ch.dequeue
-                another_response = @inp.inject(resp) {|it, nxt| nxt.call it}
+                another_response = @inp.send_take(resp)
                 @io.enqueue another_response
             end  
 
@@ -60,32 +93,48 @@ module Schema
     end
 end
 
-class Darray
-    include Schema
 
-    def init()
-        @hfb = []
+class Sequence
+    def initialize(procedure, input, output, it, &blk)
+        @input = input
+        @output = output
+        @procedure = procedure
+
+        if !input.nil?
+            it.async do 
+                while resp = input.dequeue
+                    another_response = procedure.inject(resp) {|it, nxt| nxt.call it} 
+                    
+                    if output.nil?
+                        blk.call another_response
+                    else
+                        output.enqueue another_response
+                    end
+                end
+            end
+        end
+
     end
 
-    def dispatch(data, &blk)
-        @hfb << another_response
-        if @hfb.size() > 10
-            blk.call @hfb
-            @hfb = []
-        end
+    def send(data)
+        processed_data = @procedure.inject(data) {|it, nxt| nxt.call it}
+        @output.enqueue(processed_data)
     end
 end
 
-class Fb
-    def on_receive(data)
-        puts "Terminou com #{data}"
+class Batch
+    def initialize(worker)
+        @worker = worker
+        @queue = Async::LimitedQueue.new 20
     end
 
-    def on_finish(data, status)
-
-        puts "Terminou valendo com #{data} com status #{status}"
+    def enqueue(data)
+        @queue.enqueue data
     end
 
+    def dequeue()
+        @queue.dequeue
+    end
 end
 
 # Async::Task::current"
@@ -93,17 +142,22 @@ Async do |it|
     it.annotate "Principal"
 
     # Mockar pipeline que irão somar numeros
-    procedures = Array.new(5) do
+    procedures = Array.new(3) do
         next proc do |it| 
             puts "rodando #{it}"
             sleep 0.5
             next(it + 1)
         end
     end
-    iom1 = Darray.new(procedures, procedures, it, Fb.new())
-    
-    Array(1..26).each do |itu|
-        iom1.send itu
+
+    b1 = Async::LimitedQueue.new 20
+    b2 = Async::LimitedQueue.new 20
+
+    s1 = Sequence.new procedures, nil, b1, it
+    s2 = Sequence.new procedures, b1, b2, it
+    s3 = Sequence.new(procedures, b2, nil, it) do |itu| 
+        pp itu
     end
-    iom1.send nil
+
+    s1.send 10
 end
