@@ -2,11 +2,34 @@ require 'pry-stack_explorer'
 class Darray
 end
 
+
+class NewBatch
+    def initializer(klass_template, instance_template, sym_method)
+
+    end
+
+    def set_state(state)
+        @state = state
+    end
+
+    # Como permitir com que o Batch controle e defina o ambiente de execução?
+    def dispatch_data(data)
+
+    end
+end
+
 # Worker
-class Tentatives
+class Batch
     attr_accessor :state
-    def initialize()
+    def initialize(klass_ctx, instance_ctx, sym_method)
+        @klass_ctx = klass_ctx
+        @instance_ctx = instance_ctx
+        @sym_method = sym_method
         @counter = 0
+
+        @instance_ctx
+        @instance_ctx.instance_variable_set "@hfb", []
+
     end
 
     def set_state(state)
@@ -15,10 +38,17 @@ class Tentatives
 
 
     def call(data)
+        mth = @instance_ctx.method(@sym_method)
+        mth.call data
+
+        
         @counter += 1
         if @counter == 10 
+            @counter = 0
             self.state = :open
-            return @counter
+            hfb = @instance_ctx.instance_variable_get "@hfb"
+            @instance_ctx.instance_variable_set "@hfb", []
+            return hfb
         end
 
         return nil
@@ -27,7 +57,6 @@ class Tentatives
     def on_change_state(state)
         self.state = :locked
     end
-
 end
 
 
@@ -41,13 +70,26 @@ class Drawer
         @seq = Array.new()
     end
 
-    def flow(*args, **kwargs)
+    def pipe(*args, **kwargs)
         @seq << @FLOW.new(*args, **kwargs)
     end
 
     def assign()
+        queue = Queue.new @seq
+        package = []
+        while !queue.empty?
+            content = queue.pop()
+            
+            package << content
 
-        @dash.assign_dashboard @seq
+            if !content.engine.nil?
+                @dash.assign_dashboard package
+                package = Array.new()
+            end
+        end
+
+        @dash.assign_dashboard package if !package.empty?
+
     end
 end
 
@@ -64,18 +106,27 @@ class PipeSequence
     end
 
     def build_pipe_flow(klass_ctx, instance_ctx)
-        @composition = @composition.flatten().map do |it|
-            if it.engine.nil?
-                binding.pry
-                next instance_ctx.method(it.method())
-            end
-            worker = it.engine.new()
-            worker.set_state :locked
-            worker
-            next worker
-        end 
 
+        
+
+
+
+        flows = @composition.map do |it|
+            it.map do |it|
+                if it.engine.nil?
+                    next instance_ctx.method(it.method())
+                end
+                worker = it.engine.new(klass_ctx, instance_ctx, it.method())
+                worker.set_state :locked
+                next worker
+            end
+        end 
+        
         @state = :builded
+
+        @virtual_pipeline = flows
+
+        @virtual_pipeline << [nil]
 
         return self
     end
@@ -99,7 +150,28 @@ class PipeSequence
         end
 
         return pipeflow
-        binding.pry
+        
+    end
+
+    def inject(initial_val, &blk)
+        @virtual_pipeline.inject(initial_val) do |init, seq|
+            if seq.nil?
+                return
+            end
+
+            resp = blk.call init, seq
+            begin
+                if seq.last.respond_to?('state') && seq.last.state == :locked
+                    break
+                end
+            rescue => exception
+            #    binding.pry 
+            end
+            $flagoso = true
+
+            next resp
+        end
+
     end
 end
 
@@ -116,24 +188,64 @@ module Lambda
             @seq = []
             drawer = Drawer.new(self)
             dashboard(drawer)
-            binding.pry
-            klass_template = build_klass()
-            sequence = @sequencer.build_pipe_flow(klass_template, klass_template.new())
             
-            sequence.get_pipe_flow()
-            binding.pry
+            klass_template = build_klass()
+            instance_template = klass_template.new()
+            sequence = @sequencer.build_pipe_flow(klass_template, instance_template)
+            
+            
             klass_template.define_method :run do |initial_val|
-                sequence.get_pipe_flow(self).inject(initial_val) {|it, nxt| nxt.call it }
+
+                # Isolar os pipe sequence em fatias maiores que podem estar em ambientes diferentes
+                sequence.inject(initial_val) do |it, nxt|
+                    if nxt == [nil] || it.nil?
+                        return
+                    end
+
+                    # Concatena pipe_sequence que estão no mesmo ambiente
+                    rp = nxt.inject(it) {|it, nxt| nxt.call it } rescue binding.pry
+                    # binding.pry if $flagoso
+
+                    next rp
+                end
             end
 
-            klass_template.new.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
+            instance_template.run(10)
 
-            return klass_template
+            return instance_template
         end
 
 
         def assign_dashboard(drawer_composition)
-            binding.pry
+            
             @sequencer.compose drawer_composition
         end
 

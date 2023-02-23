@@ -2,20 +2,25 @@ require_relative './impl03.2.rb'
 
 module Program
 
-    def state()
-        return :open
-    end
 
     def t1(data)
-        data + 1
+        sleep 1
+        puts "[t1] somando #{data}"
+        return data + 1
     end
-
-    def t2 
-        @hfb << 10
+    
+    def t2(data)
+        sleep 1
+        puts "[t2] integrando #{data}"
+        @hfb << data
+        
+        return data + 1
     end
-
+    
     def t3(batch)
-        batch.map {|it| it + 10}
+        sleep 1
+        puts "[t3] populando #{batch}"
+        return batch.map {|it| it + 10}
     end
 
     def report()
@@ -35,9 +40,24 @@ class Pipeline < Lambda::Dashboard
 
     def dashboard(drawer)
 
-        drawer.flow :t1
-        drawer.flow :t2, Tentatives
-        drawer.flow :t3
+        
+        drawer.pipe :t1
+        drawer.pipe :t2, Batch
+        drawer.pipe :t3
+
+        # Novo método
+
+        
+        # pipeline t1, t2 envia os dados para Batch,
+        # Batch os acumula e define quando ocorrerá o próximo despache
+        drawer.pipe :t1
+        drawer.pipe :t2
+        drawer.source Batch 
+        
+        drawer.pipe :t3
+        drawer.pipe :t4
+        drawer.source Batch 
+        
 
         drawer.assign()
     end
@@ -50,5 +70,3 @@ end
 
 # Apenas para debug inicialmente
 etl = ETL.new()
-
-etl.run()
