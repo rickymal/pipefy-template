@@ -94,21 +94,29 @@ module Schema
 end
 
 
-class Sequence
+module Sequence
     def initialize(procedure, input, output, it, &blk)
         @input = input
         @output = output
         @procedure = procedure
+        self.init()
 
         if !input.nil?
             it.async do 
                 while resp = input.dequeue
-                    another_response = procedure.inject(resp) {|it, nxt| nxt.call it} 
-                    
+                    another_response = nil
+                    ctx = process(resp) do |data|
+                        another_response = procedure.inject(data) {|it, nxt| nxt.call it} 
+                    end
+
+                    if ctx.nil?
+                        next
+                    end
+
                     if output.nil?
                         blk.call another_response
                     else
-                        output.enqueue another_response
+                        output.enqueue another_response                        
                     end
                 end
             end
@@ -122,18 +130,23 @@ class Sequence
     end
 end
 
-class Batch
-    def initialize(worker)
-        @worker = worker
-        @queue = Async::LimitedQueue.new 20
+class Darray
+    include Sequence
+
+    def init()
+        @hfb = []
     end
 
-    def enqueue(data)
-        @queue.enqueue data
-    end
+    def process(data, &blk)
+        @hfb << data
+        puts "processando, atual #{@hfb.size()}"
+        if @hfb.size() == 3
+            blk.call @hfb
+            @hfb = []
+            return 0
+        end
 
-    def dequeue()
-        @queue.dequeue
+        return nil
     end
 end
 
@@ -142,22 +155,47 @@ Async do |it|
     it.annotate "Principal"
 
     # Mockar pipeline que irão somar numeros
-    procedures = Array.new(3) do
+    procedures = Array.new(2) do
         next proc do |it| 
             puts "rodando #{it}"
             sleep 0.5
-            next(it + 1)
+            if it.is_a? (Array)
+                result = it.map do |it| 
+                    if it.is_a? Array
+                        next it.map {|it| it + 1}
+                    end
+                    next it + 1
+                end
+            else
+                result = it + 1
+            end
+            next(result)
         end
     end
 
     b1 = Async::LimitedQueue.new 20
     b2 = Async::LimitedQueue.new 20
 
-    s1 = Sequence.new procedures, nil, b1, it
-    s2 = Sequence.new procedures, b1, b2, it
-    s3 = Sequence.new(procedures, b2, nil, it) do |itu| 
-        pp itu
+    s1 = Darray.new procedures, nil, b1, it
+    s2 = Darray.new procedures, b1, b2, it
+    s3 = Darray.new(procedures, b2, nil, it) do |itu| 
+        puts "pi pi pi tchu"
+        binding.pry
     end
 
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
     s1.send 10
 end
