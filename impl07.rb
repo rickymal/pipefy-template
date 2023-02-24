@@ -7,7 +7,7 @@ require 'async'
 require 'async/queue'
 require 'pry-stack_explorer'
 
-module DefaultWorker
+module EnvSwitch
     def get_source_queue()
         return Async::LimitedQueue.new 20
     end
@@ -21,6 +21,7 @@ require 'concurrent'
 require 'concurrent-edge'
 
 class Env
+
     def initialize(procedures)
         @procedures = procedures
         @queue = Concurrent::Promises::Channel.new 10
@@ -32,10 +33,8 @@ class Env
 
 end
 
-
-
 module Schema
-    include DefaultWorker
+    include EnvSwitch
 
     def initialize(schema_i, schema_o, worker, fb)
         @inp = schema_i
@@ -93,6 +92,60 @@ module Schema
     end
 end
 
+class Env
+    def initialize(sequence)
+        @sequence = sequence
+    end
+
+    def send_take(data)
+        @sequence.inject(data) do { |it,nxt| nxt.call it }
+    end
+end
+
+class SrcEnv
+    def initialize(sequence)
+        @sequence = sequence
+    end
+
+    def send_take(data)
+        @sequence.inject(data) do { |it,nxt| nxt.call it }
+    end
+end
+
+class RemoteEnv
+    def initialize(sequence)
+
+        # Suponod que de alguma forma eu passei pro outro lado
+        @ractor = Ractor.new() do
+            procedures = Array.new(2) do
+                next proc do |it| 
+                    puts "rodando #{it}"
+                    sleep 0.5
+                    if it.is_a? (Array)
+                        result = it.map do |it| 
+                            if it.is_a? Array
+                                next it.map {|it| it + 1}
+                            end
+                            next it + 1
+                        end
+                    else
+                        result = it + 1
+                    end
+                    next(result)
+                end
+            end
+
+            while resp = Ractor.receive()
+                Ractor.yield(procedures.inject(resp) {|it, nxt| nxt.call it})
+            end
+        end
+    end
+
+    def send_take(data)
+        @ractor.send(data)
+        return @ractor.take()
+    end
+end
 
 module Sequence
     def initialize(procedure, input, output, it, &blk)
@@ -100,13 +153,16 @@ module Sequence
         @output = output
         @procedure = procedure
         self.init()
+        @env = define_worker().new procedure
 
         if !input.nil?
             it.async do 
                 while resp = input.dequeue
                     another_response = nil
                     ctx = process(resp) do |data|
-                        another_response = procedure.inject(data) {|it, nxt| nxt.call it} 
+                        
+                        another_response = @env.send_take(data) 
+                        # another_response = procedure.inject(data) {|it, nxt| nxt.call it} 
                     end
 
                     if ctx.nil?
@@ -125,13 +181,23 @@ module Sequence
     end
 
     def send(data)
-        processed_data = @procedure.inject(data) {|it, nxt| nxt.call it}
+        processed_data = @env.send_take(data)
+        # processed_data = @procedure.inject(data) {|it, nxt| nxt.call it}
         @output.enqueue(processed_data)
+    end
+end
+
+module Worker
+    def define_worker()
+        # return RemoteEnv
+        # return Env
+        return SrcEnv
     end
 end
 
 class Darray
     include Sequence
+    include Worker 
 
     def init()
         @hfb = []
@@ -153,11 +219,8 @@ end
 # Async::Task::current"
 Async do |it|
     it.annotate "Principal"
-
-    raise "Proxima etapa é descobrir como colocar um Ractor na marra"
-
     # Mockar pipeline que irão somar numeros
-    procedures = Array.new(2) do
+    procedures = Array.new(1) do
         next proc do |it| 
             puts "rodando #{it}"
             sleep 0.5
@@ -201,3 +264,49 @@ Async do |it|
     s1.send 10
     s1.send 10
 end
+
+# raise Exception, "Assistir: https://semana.javascriptexpert.com.br/aquecimento"
+
+
+
+# Async::Task::current"
+Async do |it|
+    it.annotate "Principal"
+    # Mockar pipeline que irão somar numeros
+    procedures = Array.new(2) do
+        next proc do |it| 
+            (it..(it+10)).each do |ctx|
+                yield ctx
+            end
+        end
+    end
+
+    b1 = Async::LimitedQueue.new 20
+    b2 = Async::LimitedQueue.new 20
+
+    s1 = Darray.new procedures, nil, b1, it
+    s2 = Darray.new procedures, b1, b2, it
+    s3 = Darray.new(procedures, b2, nil, it) do |itu| 
+        puts "pi pi pi tchu"
+        binding.pry
+    end
+
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+    s1.send 10
+end
+
+
+raise Exception, 'Fazer agora um sequencia de sourers'
