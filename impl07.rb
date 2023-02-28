@@ -147,6 +147,7 @@ class RemoteEnv
     end
 end
 
+
 module Sequence
     def initialize(procedure, input, output, it, &blk)
         @input = input
@@ -157,22 +158,53 @@ module Sequence
 
         if !input.nil?
             it.async do 
+
+                # Puxa o dado da fonte!
                 while resp = input.dequeue
                     another_response = nil
-                    ctx = process(resp) do |data|
-                        
-                        another_response = @env.send_take(data) 
-                        # another_response = procedure.inject(data) {|it, nxt| nxt.call it} 
-                    end
 
-                    if ctx.nil?
-                        next
-                    end
+                    # Realiza um pre-processando para saber se vai adiante. Caso sim, é passado para o 'data'
+                    process(resp) do |data|
 
-                    if output.nil?
-                        blk.call another_response
-                    else
-                        output.enqueue another_response                        
+                        # Método send_take pode ser do tipo 'source' ou simplesmente realizar um 'return'
+                        another_response = @env.send_take(data) do |thr|
+                            another_response = thr
+
+                            # Caso não tenha obtido retorno 
+                            if another_response.nil?
+                                next
+                            end
+        
+                            # Envia para o próximo pipe ou simplesmente retorna tudo logo
+                            if output.nil?
+                                blk.call another_response
+                            else
+                                output.enqueue another_response                        
+                            end
+                        end
+
+                    end
+                end
+
+                if false
+                    # Jeito mais simples, porém que não permite o uso de sourcing
+                    # Puxa o dado da fonte!
+                    while resp = input.dequeue
+                        another_response = nil
+    
+                        if data = process(resp)
+                            if thr = @env.send_take(data)
+                                if thr.nil?
+                                    next
+                                end
+    
+                                if output.nil?
+                                    blk.call thr
+                                else
+                                    output.enqueue thr
+                                end
+                            end
+                        end
                     end
                 end
             end
@@ -181,9 +213,10 @@ module Sequence
     end
 
     def send(data)
-        processed_data = @env.send_take(data)
+        processed_data = @env.send_take(data) do |thr|
+            @output.enqueue(thr)
+        end
         # processed_data = @procedure.inject(data) {|it, nxt| nxt.call it}
-        @output.enqueue(processed_data)
     end
 end
 
@@ -269,6 +302,9 @@ end
 
 
 
+# Garantir que posso passa 'sourcers' nos procedures
+# Garantir que o Ractor consiga rodar de forma assíncrona (sem precisar de um retorno)
+
 # Async::Task::current"
 Async do |it|
     it.annotate "Principal"
@@ -307,6 +343,33 @@ Async do |it|
     s1.send 10
     s1.send 10
 end
-
-
 raise Exception, 'Fazer agora um sequencia de sourers'
+
+# Não dá para permitir com que eu tenha flexibilidade sem prejudicar a construção da classe
+# Preciso retirar a flexibilidade aqui
+
+# O bloco irá ser executado na instancia do objeto ETLBatch
+ETLBatch = Dashboard.new [Program] do |elastic_klass|
+
+    # Criando de forma dinâmica!
+    self.instance_methods(false).each do |method|
+        if method.to_s.include? ("src")
+            elastic_klass.source self.method(method)
+        elsif method.to_s.include? ("t_")
+            elastic_klass.flow self.method(method)
+        else
+            # just continue
+        end
+    end
+
+    # Criando de forma estática
+    elastic_klass
+        .source self.method('extract')
+        .flow self.method('transform1')
+        .raw self.method('transform2') do |queue|
+            @hfb = Darray.new 10, 10 do |batch|
+                queue.enqueue batch
+            end
+        end
+        .flow self.method('dispatch')
+end
