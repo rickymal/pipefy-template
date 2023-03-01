@@ -2,18 +2,21 @@ require_relative './impl08.1.rb'
 
 module ETL
     def extract()
+        10.times do |yld|
+            yield yld
+        end
+    end
+    
+    def t1(data)
+        binding.pry
+        return data * 2
+    end
+    
+    def t2(data)
         binding.pry
     end
     
-    def transform1()
-        binding.pry
-    end
-    
-    def transform2()
-        binding.pry
-    end
-    
-    def load()
+    def load(data)
         binding.pry
     end
 end
@@ -29,7 +32,7 @@ class ETLBatch < Dashboard
                 queue.enqueue batch 
             end
         end
-        pipebuilder.flow 'dispatch'
+        pipebuilder.flow 'load'
     end
 end
 

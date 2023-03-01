@@ -18,10 +18,10 @@ class PipeOperator
         if !@input.nil?
             it.async do
                 while resp = @input.dequeue
-
+                    
                     # verificar o fluxo de pipelines posteriormente
                     puts "RESPONDIDO #{resp}"
-                    binding.pry
+                    
                     # Pensar depois o que fazer quando chegar no final
                     if @output.nil?
                         binding.pry
@@ -33,7 +33,7 @@ class PipeOperator
     end
 
     def call(data)
-        binding.pry 
+        binding.pry
         @output.enqueue data
     end
 
@@ -51,15 +51,13 @@ end
 class OperatorsArray < Array
     def inject_operators()
         operators = self
-        queues = (self.size() - 1).times.map do 
+        queues = self.size().times.map do 
             Async::LimitedQueue.new 20
         end
 
-        queues.insert(0, nil)
         queues.insert(-1, nil)
-
+    
         operators.zip(queues.each_cons(2)) do |opt, (qinput, qoutput)|
-  
             # Onde os dados serão puxados para serem inseridos no pipeline
             opt.input_enqueue qinput
 
@@ -67,9 +65,10 @@ class OperatorsArray < Array
             opt.output_enqueue qoutput
         end
 
-
         it = Async::Task.current
         operators.each {|ot| ot.init(it)}
+
+        return queues.first()
     end
 
     def self.from_array arr
@@ -80,19 +79,16 @@ end
 require 'pry'
 # Classe que será responsável por buildar um array de pipeoperators
 class Template
-    def initialize()
+    
+    def initialize(klass_template)
         @pipeline = []
+        @template = klass_template
+        @instance = klass_template.new()
     end
 
     def yielded(method)
-
-        # O objeto pipeoperator recebe o alias, o método a ser executado e um bloco
-        # que determina como esse método será chamado
-        # o bloco irá receber três parâmetros:
-        # input (informação inputada no método pelo pipeline)
-        # method (o method em si para operação)
-        # qeueue (uma fila assíncrona para permitir a passagem para o próximo pipe)
-        @pipeline << PipeOperator.new('yielded', method) do |input, method, queue|
+        
+        @pipeline << PipeOperator.new('yielded', @instance.method(method)) do |input, method, queue|
             method.call do |result|
                 queue.enqueue result
             end 
@@ -100,13 +96,13 @@ class Template
     end
 
     def flow(method)
-        @pipeline << PipeOperator.new('flow', method) do |input, method, queue|
+        @pipeline << PipeOperator.new('flow', @instance.method(method)) do |input, method, queue|
             queue.enqueue method.call(input) 
         end
     end
 
     def raw(method, &blk)
-        @pipeline << PipeOperator.new('raw', method, &blk)
+        @pipeline << PipeOperator.new('raw', @instance.method(method), &blk)
     end
     
     def build_pipeline()
@@ -126,21 +122,23 @@ class Dashboard
 
 
     def self.plug(decentralized_implementations)
-        @@aggregators = Class.new.include decentralized_implementations[0] 
+        klass = Class.new
+        klass.include decentralized_implementations[0] 
+
+        @@aggregators = klass 
     end
 
     def initialize()
-        pipebuider = Template.new()
+
+        pipebuider = Template.new(@@aggregators)
         draw(pipebuider)
         
         @pipeline = pipebuider.build_pipeline()
-        @pipeline.inject_operators
-        @head = @pipeline.first()
+        @head = @pipeline.inject_operators
     end
 
     def run(initial_value)
-        binding.pry
-        @head.call initial_value
+        @head.enqueue initial_value
     end
 end
 
