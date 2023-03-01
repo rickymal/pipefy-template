@@ -101,6 +101,7 @@ class Template
         end
     end
 
+
     def raw(method, &blk)
         @pipeline << PipeOperator.new('raw', @instance.method(method), &blk)
     end
