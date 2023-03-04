@@ -7,33 +7,48 @@ class PipeOperator
     attr_accessor :method, :operator, :type
     attr_accessor :input, :output
 
-    def initialize(type, method, &blk)
+    def initialize(type, method, instance_constructor = nil, template = nil, &blk)
         @method = method
         @operator = blk
         @type = type
+        @instance_constructor = instance_constructor
+        @template = template
+
+        
+        if @template
+            @template.instance_exec(@output, &instance_constructor)
+        end
     end
 
     # Vai iniciar a thread para leitura
-    def init(it)
+    def init(it, &blk)
         if !@input.nil?
             it.async do
                 while resp = @input.dequeue
                     
                     # verificar o fluxo de pipelines posteriormente
                     puts "RESPONDIDO #{resp}"
-                    
+
                     # Pensar depois o que fazer quando chegar no final
                     if @output.nil?
-                        binding.pry
+                        blk.call resp
+                        next
                     end
-                    @operator.call resp, @method, @output 
+
+                    # if @operator || block_given?
+                    if @operator
+                        @operator.call resp, @method, @output, :using
+                    end
                 end
+                
+                @operator.call resp, @method, @output, :ending
+                @output.enqueue nil
             end
         end
     end
 
     def call(data)
-        binding.pry
+
         @output.enqueue data
     end
 
@@ -49,7 +64,7 @@ end
 
 # Responsável por definir o fluxo de comportamento entre os operators
 class OperatorsArray < Array
-    def inject_operators()
+    def inject_operators(&callback)
         operators = self
         queues = self.size().times.map do 
             Async::LimitedQueue.new 20
@@ -66,7 +81,7 @@ class OperatorsArray < Array
         end
 
         it = Async::Task.current
-        operators.each {|ot| ot.init(it)}
+        operators.each {|ot| ot.init(it, &callback)}
 
         return queues.first()
     end
@@ -95,16 +110,31 @@ class Template
         end
     end
 
+    def batch(method)
+        @hfb = Array.new()
+        @pipeline << PipeOperator.new('yielded', @instance.method(method)) do |input, method, queue, status|
+            if status == :ending
+                queue.enqueue @hfb
+                queue.enqueue nil
+                break
+            end
+
+            method.call input do |result|
+                if @hfb.size() > 3
+                    queue.enqueue @hfb.dup()
+                    @hfb.clear()
+                end
+                @hfb << result
+            end 
+        end
+    end
+
     def flow(method)
         @pipeline << PipeOperator.new('flow', @instance.method(method)) do |input, method, queue|
             queue.enqueue method.call(input) 
         end
     end
 
-
-    def raw(method, &blk)
-        @pipeline << PipeOperator.new('raw', @instance.method(method), &blk)
-    end
     
     def build_pipeline()
         return OperatorsArray.from_array @pipeline
@@ -135,7 +165,9 @@ class Dashboard
         draw(pipebuider)
         
         @pipeline = pipebuider.build_pipeline()
-        @head = @pipeline.inject_operators
+        @head = @pipeline.inject_operators do |response|
+            binding.pry
+        end
     end
 
     def run(initial_value)

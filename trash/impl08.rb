@@ -1,19 +1,18 @@
 require_relative './impl08.1.rb'
 
 module ETL
-    def extract()
+    def extract(optional_data = nil)
         10.times do |yld|
             yield yld
         end
     end
     
     def t1(data)
-        binding.pry
         return data * 2
     end
     
     def t2(data)
-        binding.pry
+        yield data
     end
     
     def load(data)
@@ -24,14 +23,11 @@ end
 class ETLBatch < Dashboard
     plug [ETL]
 
-    def draw(pipebuilder, elastic_instance_methods = [])
+    def draw(pipebuilder, elastic_klass = [])
+
         pipebuilder.yielded 'extract'
         pipebuilder.flow 't1'
-        pipebuilder.raw 't2' do |_, _, queue|
-            @hfb = Darray.new 10, 10 do |batch|
-                queue.enqueue batch 
-            end
-        end
+        pipebuilder.batch 't2' 
         pipebuilder.flow 'load'
     end
 end
