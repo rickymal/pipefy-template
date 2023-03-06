@@ -1,4 +1,26 @@
 
+# Template
+PipeDSL.with App do |it|
+
+    # Queue, dequeue pattern
+    it.source 'load_enterprises'
+    it.source 'load_stablisments'
+    it.source 'load_partners'
+
+    # Send, take pattern
+    it.with Default do |it|
+        it.flow 't1'
+        it.flow 't2'
+        it.flow 't3'
+    end
+
+    it.with Ractor do |it|
+        it.flow 't4'
+        it.flow 't5'
+        it.flow 't6'
+    end
+end
+
 module App
 
 
@@ -26,6 +48,7 @@ module App
     
     def dispatch_data(batch)
         sleep 10
+        return batch[0]
         binding.pry
     end
 

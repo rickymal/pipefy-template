@@ -90,7 +90,23 @@ Async do |it|
 
     it.async do
         while resp = q4.dequeue
-            dispatch_data.bind(ctx).call resp
+            q5.enqueue dispatch_data.bind(ctx).call resp
+        end
+    end
+
+    it.async do
+        while resp = q5.dequeue
+            load_stablisments.bind(ctx).call resp do |result|
+                q6.enqueue(result)
+            end
+        end
+    end
+
+    it.async do
+        while resp = q6.dequeue
+            load_stablisments.bind(ctx).call resp do |result|
+                q7.enqueue(result)
+            end
         end
     end
 end
