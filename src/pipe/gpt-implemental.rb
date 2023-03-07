@@ -4,13 +4,17 @@ require 'pry'
 # Somente o 'source' e o 'flow', nada de 'batch'!
 # Keep it simple
 class QueuePathBuilder
+  attr_reader :queues
   def initialize()
     @mtx = Mutex.new()
+    @queues = [nil, nil]
     @path = Enumerator.new do |yld|
       q1 = Async::LimitedQueue.new 20
+      @queues[0] = q1
       loop do
         @mtx.synchronize do
           q2 = Async::LimitedQueue.new 20
+          @queues[1] = q2
           yld << [q1, q2]
           q1 = q2
         end
@@ -26,6 +30,7 @@ $queues = []
 
 
 class PipeDSL
+  attr_reader :last_queue
 
   # @@queue_builder = (1..).lazy.map { Async::LimitedQueue.new 10 }.each_cons(2)
   
@@ -36,8 +41,7 @@ class PipeDSL
     pipe_dsl = new module_ctx, path_builder
     pipe_dsl.instance_eval(&blk) 
 
-    sleep 1
-    return q1
+    return q1 , pipe_dsl.last_queue
   end
 
   def initialize ctx, path_builder
@@ -54,6 +58,7 @@ class PipeDSL
 
   def source(method_name)
     q1, q2 = @path_builder.next
+    @last_queue = q2
     method = @ctx.method(method_name)
     @reactor.async do |task|
       while resp = q1.dequeue
@@ -67,6 +72,7 @@ class PipeDSL
 
   def flow(methods)
     q1, q2 = @path_builder.next
+    @last_queue = q2
     methods = methods.map {|it| @ctx.method(it)}
     @reactor.async do
       while resp = q1.dequeue
@@ -78,6 +84,7 @@ class PipeDSL
 
   def actor(methods)
     q1, q2 = @path_builder.next
+    @last_queue = q2
     klass = @klass
     
     ractor = Ractor.new(Ractor.make_shareable(methods), klass) do |methods, klass|
@@ -105,20 +112,20 @@ end
 module App
   def load_enterprises(input = nil)
     yield "data1"
-    yield "data2"
-    yield "data3"
+    # yield "data2"
+    # yield "data3"
   end
 
   def load_stablisments(data)
     yield "data4 with #{data}"
-    yield "data5 with #{data}"
-    yield "data6 with #{data}"
+    # yield "data5 with #{data}"
+    # yield "data6 with #{data}"
   end
 
   def load_partners(data)
     yield "data7, #{data}"
-    yield "data8, #{data}"
-    yield "data9, #{data}"
+    # yield "data8, #{data}"
+    # yield "data9, #{data}"
   end
 
   def t1(data)
@@ -154,15 +161,25 @@ end
 
 
 
-Async do
-  ctx = Dsl.with App do
+Async do |it|
+  ctx, ctxo = Dsl.with App do
     source 'load_enterprises'
     source 'load_stablisments'
     source 'load_partners'
     flow ['t1', 't2', 't3']
-    actor ['t4','t5','t6']
+    actor ['t4', 't5', 't6']
   end  
-  ctx.enqueue 100
+
+  ctxi =ctx
+  ctxi.enqueue 100
+  sleep 5
+  binding.pry
+
+  it.async do 
+    while resp = ctxo.dequeue()
+      puts "[PRC] #{resp}"
+    end
+  end
 
   # Para finalizar
   ctx.enqueue nil
