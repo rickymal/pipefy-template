@@ -48,6 +48,7 @@ class PipeDSL
     @reactor = Async::Task.current
     klass = Class.new
     klass.include ctx
+    @klass = klass
     @ctx = klass.new()
   end
 
@@ -74,6 +75,28 @@ class PipeDSL
       q2.enqueue nil
     end
   end
+
+  def actor(methods)
+    q1, q2 = @path_builder.next
+    klass = @klass
+    
+    ractor = Ractor.new(Ractor.make_shareable(methods), klass) do |methods, klass|
+      ctx = klass.new()
+      methods = methods.map {|it| ctx.method(it)}
+      while resp = Ractor.receive()
+        rr = methods.inject(resp) {|last, nxt| nxt.call last}
+        Ractor.yield rr
+      end
+    end
+    @reactor.async do
+      while resp = q1.dequeue
+        ractor.send resp
+        q2.enqueue ractor.take()
+      end
+      q2.enqueue nil
+    end
+  end
+
 end
 
 class Dsl < PipeDSL
@@ -112,6 +135,21 @@ module App
     puts "processando t3: #{data}"
     return data
   end
+
+  def t4(data)
+    puts "processando t4: #{data}"
+    return data
+  end
+  
+  def t5(data)
+    puts "processando t5: #{data}"
+    return data
+  end
+  
+  def t6(data)
+    puts "processando t6: #{data}"
+    return data
+  end
 end
 
 
@@ -122,6 +160,7 @@ Async do
     source 'load_stablisments'
     source 'load_partners'
     flow ['t1', 't2', 't3']
+    actor ['t4','t5','t6']
   end  
   ctx.enqueue 100
 
@@ -130,16 +169,3 @@ Async do
   sleep 5
   puts 'fim'.center 80, '-'
 end
-
-# Pipeline.with [App] do
-#   using Default do 
-#     source 'load_enterprises'
-#     source 'load_stablisments'
-#     source 'load_partners'
-#     flow ['t1','t2','t3']
-#   end
-
-#   using Actor do 
-#     flow ['t4','t5','t6']
-#   end
-# end
