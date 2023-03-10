@@ -26,11 +26,34 @@ class QueuePathBuilder
     @path.next()
   end
 end
-$queues = []
 
+
+module Operator
+  def flow(q1, q2, methods, klass)
+    ctx = klass.new()
+    methods = methods.map {|it| ctx.method(it)}
+    while resp = q1.dequeue
+      q2.enqueue methods.inject(resp) {|last, nxt| nxt.call last}
+    end
+    q2.enqueue nil 
+  end
+
+  def source(q1, q2, method, klass)
+    ctx = klass.new()
+    method = ctx.method(method)
+    while resp = q1.dequeue
+      method.call(resp) do |data|
+        q2.enqueue(data)
+      end
+    end
+
+    q2.enqueue nil
+  end
+end
 
 class PipeDSL
   attr_reader :last_queue
+  include Operator
 
   # @@queue_builder = (1..).lazy.map { Async::LimitedQueue.new 10 }.each_cons(2)
   
@@ -48,8 +71,9 @@ class PipeDSL
     # ElasticObject.create_klass ctx
     @path_builder = path_builder
     @module = ctx
-    # @reactor = reactor = Async::Reactor.new
     @reactor = Async::Task.current
+
+    # Gerador de contexto 
     klass = Class.new
     klass.include ctx
     @klass = klass
@@ -59,26 +83,17 @@ class PipeDSL
   def source(method_name)
     q1, q2 = @path_builder.next
     @last_queue = q2
-    method = @ctx.method(method_name)
     @reactor.async do |task|
-      while resp = q1.dequeue
-        method.call resp do |data|
-          q2.enqueue(data)
-        end    
-      end
-      q2.enqueue nil
+      super(q1, q2, method_name, @klass)
     end
   end
 
   def flow(methods)
     q1, q2 = @path_builder.next
     @last_queue = q2
-    methods = methods.map {|it| @ctx.method(it)}
+
     @reactor.async do
-      while resp = q1.dequeue
-        q2.enqueue methods.inject(resp) {|last, nxt| nxt.call last}
-      end
-      q2.enqueue nil
+      super(q1, q2, methods, @klass)
     end
   end
 
@@ -173,7 +188,6 @@ Async do |it|
   ctxi =ctx
   ctxi.enqueue 100
   sleep 5
-  binding.pry
 
   it.async do 
     while resp = ctxo.dequeue()
