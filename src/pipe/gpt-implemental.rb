@@ -29,8 +29,8 @@ end
 
 
 module Operator
-  def flow(q1, q2, methods, klass)
-    ctx = klass.new()
+  def flow(q1, q2, methods, klass, dependencies)
+    ctx = klass.new(dependencies)
     methods = methods.map {|it| ctx.method(it)}
     while resp = q1.dequeue
       q2.enqueue methods.inject(resp) {|last, nxt| nxt.call last}
@@ -38,8 +38,8 @@ module Operator
     q2.enqueue nil 
   end
 
-  def source(q1, q2, method, klass)
-    ctx = klass.new()
+  def source(q1, q2, method, klass, dependencies)
+    ctx = klass.new(dependencies)
     method = ctx.method(method)
     while resp = q1.dequeue
       method.call(resp) do |data|
@@ -57,34 +57,63 @@ class PipeDSL
 
   # @@queue_builder = (1..).lazy.map { Async::LimitedQueue.new 10 }.each_cons(2)
   
-  def self.with(module_ctx, &blk)
+  def self.with(module_ctx, blk, services = nil)
+
     path_builder = QueuePathBuilder.new
     _, q1 = path_builder.next()
 
-    pipe_dsl = new module_ctx, path_builder
-    pipe_dsl.instance_eval(&blk) 
+    pipe_dsl = new module_ctx, path_builder, services
+    blk.bind(pipe_dsl).call pipe_dsl
+    # pipe_dsl.instance_eval(&blk) 
 
     return q1 , pipe_dsl.last_queue
   end
 
-  def initialize ctx, path_builder
+  class ElasticObject
+
+    def initialize(dependencies)
+      dependencies.each do |it|
+        it.bind(self).call()
+      end
+    end
+  end
+
+  def initialize ctx, path_builder, services
     # ElasticObject.create_klass ctx
+    
     @path_builder = path_builder
     @module = ctx
     @reactor = Async::Task.current
 
     # Gerador de contexto 
-    klass = Class.new
+    klass = ElasticObject.dup()
+
+    # obtendo os pre initializadores
+    pre_initializers = services.map {|it| it.instance_method 'pre_init'}
+    @services = services
+    @initializers = services.map {|it| it.instance_method 'init'}
+    # post_initializers = services.map {|it| it.instance_method 'post_init'}
+
+    pre_initializers.each do |it|
+      it.bind(klass).call()
+    end
+
+    # klass.initializers = initializers
+    # klass.post_initializers = post_initializers
     klass.include ctx
     @klass = klass
-    @ctx = klass.new()
+    binding.pry
+    @ctx = klass.new(@initializers)
+    binding.pry
   end
 
   def source(method_name)
     q1, q2 = @path_builder.next
     @last_queue = q2
     @reactor.async do |task|
-      super(q1, q2, method_name, @klass)
+      super(q1, q2, method_name, @klass, @initializers) 
+    rescue Exception => error 
+      binding.pry 
     end
   end
 
@@ -93,7 +122,7 @@ class PipeDSL
     @last_queue = q2
 
     @reactor.async do
-      super(q1, q2, methods, @klass)
+      super(q1, q2, methods, @klass, @initializers)
     end
   end
 
@@ -101,9 +130,10 @@ class PipeDSL
     q1, q2 = @path_builder.next
     @last_queue = q2
     klass = @klass
-    
-    ractor = Ractor.new(Ractor.make_shareable(methods), klass) do |methods, klass|
-      ctx = klass.new()
+    binding.pry
+    services = Ractor.make_shareable @services
+    ractor = Ractor.new(Ractor.make_shareable(methods), klass,  services) do |methods, klass, services|
+      ctx = klass.new(services.map {|it| it.instance_method('init')})
       methods = methods.map {|it| ctx.method(it)}
       while resp = Ractor.receive()
         rr = methods.inject(resp) {|last, nxt| nxt.call last}
@@ -175,28 +205,84 @@ module App
 end
 
 
+module Operator
+  module SPDCommons
+    def pre_init()
+      puts "PRE INICIALIZANDO!"
+    end
+    
+    def init()
+      puts "INICIALIZANDO!"
+    end
 
-Async do |it|
-  ctx, ctxo = Dsl.with App do
+    def post_init()
+    end
+  end
+end
+
+class Pipefy
+  def initialize(mdl, drawer:, services:)
+    
+
+    # podemos definir a ordem no proprio modulo
+    if drawer.nil? && 
+      drawer = mdl
+    end
+
+    @mdl = mdl
+    @drawer = drawer
+    @services = services
+  end
+  
+  def build_pipeline()
+    drawer = @drawer.instance_method 'draw_pipeline'
+    return Dsl.with @mdl, drawer, @services
+  end
+end
+
+
+module Example
+  def draw_pipeline(dsl)
     source 'load_enterprises'
     source 'load_stablisments'
     source 'load_partners'
     flow ['t1', 't2', 't3']
     actor ['t4', 't5', 't6']
-  end  
-
-  ctxi =ctx
-  ctxi.enqueue 100
-  sleep 5
-
-  it.async do 
-    while resp = ctxo.dequeue()
-      puts "[PRC] #{resp}"
-    end
   end
+end
 
-  # Para finalizar
-  ctx.enqueue nil
-  sleep 5
-  puts 'fim'.center 80, '-'
+Async do |it|
+
+  pipe = Pipefy.new(
+    App,
+    drawer: Example,
+    services: [Operator::SPDCommons],
+  )
+
+  ctxi, ctxo = pipe.build_pipeline()
+  binding.pry
+
+  # [OLD]
+  # ctx, ctxo = Dsl.with App do
+  #   source 'load_enterprises'
+  #   source 'load_stablisments'
+  #   source 'load_partners'
+  #   flow ['t1', 't2', 't3']
+  #   actor ['t4', 't5', 't6']
+  # end  
+
+  # ctxi =ctx
+  # ctxi.enqueue 100
+  # sleep 5
+
+  # it.async do 
+  #   while resp = ctxo.dequeue()
+  #     puts "[PRC] #{resp}"
+  #   end
+  # end
+
+  # # Para finalizar
+  # ctx.enqueue nil
+  # sleep 5
+  # puts 'fim'.center 80, '-'
 end
