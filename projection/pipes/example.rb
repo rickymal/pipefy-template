@@ -38,7 +38,7 @@ AsyncQueue = Pipefy::Builder.spawn do |this|
         end
     end
 
-    # Método que fará renderizar os dados
+    # Método que fará renderizar os dados em uma tela
     visualize(this, '/app')
 
     # Este método é responsável por cia um children
