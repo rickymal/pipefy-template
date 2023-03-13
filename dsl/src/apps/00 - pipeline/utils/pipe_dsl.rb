@@ -1,7 +1,6 @@
 require_relative 'queue_path_builder.rb'
 require_relative 'operators'
 require 'async'
-binding.irb
 
 class PipeDSL
     attr_reader :last_queue
@@ -111,6 +110,19 @@ class PipeDSL
             output_queue.enqueue nil 
         end
     end
+
+    # Padronizando o comportamento
+    def _make_flow(input_queue, output_queue, methods, klass, action, services, extensions)
+        action.on_load(instance, klass, services, extensions)
+        @reactor.async do 
+            while resp = input_queue.dequeue
+                action.send(resp)
+                output_queue.enqueue(action.take)
+            end
+            output_queue.enqueue(nil)
+        end
+
+    end
   
     def actor(methods)
         input_queue, output_queue = @path_builder.next
@@ -147,8 +159,8 @@ class PipeDSL
     
         @reactor.async do
             while resp = input_queue.dequeue
-            ractor.send(resp)
-            output_queue.enqueue(ractor.take)
+                ractor.send(resp)
+                output_queue.enqueue(ractor.take)
             end
             output_queue.enqueue(nil)
         end
