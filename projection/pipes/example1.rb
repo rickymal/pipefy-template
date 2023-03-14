@@ -39,18 +39,17 @@ AsyncQueue = Pipefy::Builder.spawn do |this|
     end
 
     # Método que fará renderizar os dados em uma tela
-    visualize(this, '/app')
+    view(this, '/app', {request: Request, response: Response})
 
     # Este método é responsável por cia um children
-    p1 = this.tensor()
-    p2 = this.tensor()
-    p3 = this.tensor()
+    p1 = this.tensor
+    p2 = this.tensor
+    p3 = this.tensor
 
     sequence(p1, p2, p3)
 
     # input, output
-    import(p1)
-    export(p3)
+    io(p1, p3)
 
     p1.pipeline do |it|
         it.source 'load_enterprises'
@@ -67,16 +66,11 @@ AsyncQueue = Pipefy::Builder.spawn do |this|
     p3.pipeline do |it|
 
     end
-
-    
-    
 end
 
-
-
 def run(initial_value)
-    pipeline = AsyncQueue.new()
     Async do 
+        pipeline = AsyncQueue.new()
         pipeline.send(initial_value)
     end
 end
