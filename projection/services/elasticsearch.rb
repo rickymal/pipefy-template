@@ -9,7 +9,7 @@ end
 # A classe service pode receber outros serviços internos, por padrão o objeto ElasticObject recebe os modulos, serviços e extensions
 # Os modulos só são passados como parâmetro apenas se o serviço em questão for um modulo (template)
 # A classe service não existe e seu único propósito é destacar que a classe abaixo é um serviço (apenas!)
-class Elasticsearch < Service
+class Elasticsearch
 
     attr_reader :esdev
     attr_reader :esprod
