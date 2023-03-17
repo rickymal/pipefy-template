@@ -1,7 +1,7 @@
 module Extensions
-    def pre_init(klass)
+    def pre_init()
     end
 
-    def init(instance)
+    def init()
     end
 end
