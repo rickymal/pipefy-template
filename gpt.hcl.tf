@@ -1,0 +1,1 @@
+Conexão com o gpt para que ele consiga ler todo o código [in future]

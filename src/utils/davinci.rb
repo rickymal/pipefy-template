@@ -14,6 +14,13 @@ module Davinci
         attr_reader :child
 
 
+        # Por padrão utilizar o próprio contexto para uso
+        def pipeline(ctx = self, &blk)
+            @ctx = ctx
+            @pipeline_drawer = ctx
+        end
+
+
         def define_child_app_as(env)
             @env = env
         end
@@ -26,6 +33,7 @@ module Davinci
             @child = []
             @template = []
             @env = nil
+            @dsl = nil
         end
 
         def use(**cnt)
@@ -52,6 +60,11 @@ module Davinci
         @app_stack.push(ctx)
         blk.call(ctx)
         @app_stack.pop()
+
+        # Prepare to build!
+        if @app_stack.empty?
+
+        end
 
     end
 

@@ -12,6 +12,8 @@ def find_ruby_files_by_path(path, nested = false, ignore: [], &blk)
 
     ruby_files.each(&blk) if blk
     return ruby_files
+rescue Exception => error 
+  binding.pry
 end
 
 def find_ruby_files_by_path(path, nested = false, ignore: [], &blk)
@@ -31,6 +33,8 @@ def find_ruby_files_by_path(path, nested = false, ignore: [], &blk)
     end
   
     ruby_files
+  rescue Exception => error 
+    binding.pry
   end
   
 
@@ -47,7 +51,7 @@ def get_constants_by_path(path, &blk)
     rescue Exception => error 
         binding.pry
     end
-
+    binding.pry
     load path
     consts = constants.map {|it| Object.const_get(it)}.compact()
 
@@ -57,6 +61,8 @@ def get_constants_by_path(path, &blk)
     load path, true
 
     return consts
+  rescue Exception => error 
+    binding.pry
 end
 
 
