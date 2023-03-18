@@ -1,11 +1,10 @@
 require 'async'
 require 'async/container'
-
-module Davinci
-    @app_stack = []
-    @ctx = nil
-
-    class BaseContext
+class ContextTreeBuilder
+    def initialize()
+        @app_stack = []
+        @ctx = nil
+        @root = nil
     end
 
     # Não apenas tenho que garantir as extensões e serviços, preciso garantir que os processos filhos também os tenham
@@ -57,22 +56,44 @@ module Davinci
         
         ctx = ContextManager.new name, route
         @app_stack.last&.insert_children ctx
+
+        if @app_stack.empty?
+            @root = ctx
+        else
+            binding.pry
+        end
+
         @app_stack.push(ctx)
         blk.call(ctx)
         @app_stack.pop()
 
-        # Prepare to build!
         if @app_stack.empty?
-
+            build()
         end
 
     end
 
+    # Onde a magia acontece
+    def build()
+        binding.pry
+    end
 
     def _get_app_stack()
         @app_stack
     end
 
-    module_function :App
-    module_function :_get_app_stack
+    def _set_app_stack(data)
+        @app_stack << data
+    end
+
+    # module_function :App
+    # module_function :_get_app_stack
+    # module_function :_set_app_stack
 end
+
+
+Davinci = ContextTreeBuilder.new()
+
+# binding.pry
+# ctx._get_app_stack
+# ctx._set_app_stack 10
