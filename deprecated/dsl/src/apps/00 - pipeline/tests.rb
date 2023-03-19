@@ -49,7 +49,7 @@ module App
     def dispatch_data(batch)
         sleep 10
         return batch[0]
-        binding.pry
+        
     end
 
     def dispatch_in_ractor1(data)

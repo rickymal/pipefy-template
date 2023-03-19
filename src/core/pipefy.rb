@@ -123,7 +123,7 @@ class PipeDSL
     _, input_queue = path_builder.next
 
     pipe_dsl = new(module_ctx, path_builder, services, extensions, config)
-    blk.bind(pipe_dsl).call(pipe_dsl)
+    blk.bind(pipe_dsl).call()
 
     return input_queue, pipe_dsl.last_queue
   end
@@ -166,8 +166,11 @@ class PipeDSL
     @initializers = services.map { |it| it.instance_method('init') }
 
     pre_initializers.each { |it| it.bind(klass).call }
-
-    klass.include(ctx)
+    
+    # Isso não é performático! mas depois eu altero
+    Array(ctx).each do |mdl|
+      klass.prepend(mdl)
+    end
     @klass = klass
     @ctx = klass.new(@initializers)
   end
@@ -175,7 +178,7 @@ class PipeDSL
   # def sources(method_names)
   #   input_queue, output_queue = @path_builder.next
   #   @last_queue = output_queue
-  #   binding.pry
+  #   
 
   #   @reactor.async do
   #     method_names.each do |method_name|
@@ -196,7 +199,7 @@ class PipeDSL
       # implement [post_init] here!
       @ctx.post_init() if @ctx.respond_to?("post_init")
     rescue Exception => error
-      binding.pry
+      
     end
   end
 
@@ -252,6 +255,7 @@ class PipeDSL
       @ctx.post_init() if @ctx.respond_to?("post_init")
     end
 
+    # Otimizar isso dps
     @reactor.async do
       ractor_index = 0
       while resp = input_queue.dequeue
@@ -352,14 +356,14 @@ class Pipefy
 
     # podemos definir a ordem no proprio modulo
     if drawer.nil?
-      drawer = mdl
+      drawer = Array(mdl).first()
     end
 
-    @mdl = mdl
-    @drawer = drawer
-    @services = services
-    @extensions = extensions
-    @config = config
+    @mdl ||= mdl
+    @drawer ||= drawer
+    @services ||= services
+    @extensions ||= extensions
+    @config ||= config
   end
   
   def build_pipeline()
@@ -370,7 +374,7 @@ end
 
 
 module Example
-  def draw_pipeline(dsl)
+  def draw_pipeline()
 
     source 'load_enterprises'
     source 'load_stablisments'
@@ -381,33 +385,41 @@ module Example
   end
 end
 
-# pipe = Pipefy.new(
-#   App,
-#   drawer: Example,
-#   services: [Operator::SPDCommons],
-#   extensions: {
-#     yml: Operator::YAMLLoader.new()
-#   }
-# )
 
 
-# pipe = Pipefy.new(
-#   App,
-#   drawer: Example,
-#   services: [Operator::SPDCommons],
-#   extensions: {
-#     yml: Operator::YAMLLoader.new()
-#   },
-#   config: PipefyConfig.new(ractor_count: 4, queue_size: 50, batch_size: 10)
-# )
+module Bpp 
 
-# Async do |it|
+end
 
-
-#   ctxi, ctxo = pipe.build_pipeline()
-#   ctxi.enqueue 100
-#   sleep 1
-#   puts ctxo.dequeue
-#   binding.pry
-
-# end
+if true
+  # pipe = Pipefy.new(
+  #   App,
+  #   drawer: Example,
+  #   services: [Operator::SPDCommons],
+  #   extensions: {
+  #     yml: Operator::YAMLLoader.new()
+  #   }
+  # )
+  
+  
+  pipe = Pipefy.new(
+    [App, Bpp],
+    drawer: Example,
+    services: [Operator::SPDCommons],
+    extensions: {
+      yml: Operator::YAMLLoader.new()
+    },
+    config: PipefyConfig.new(ractor_count: 4, queue_size: 50, batch_size: 10)
+  )
+  
+  Async do |it|
+  
+  
+    ctxi, ctxo = pipe.build_pipeline()
+    ctxi.enqueue 100
+    sleep 1
+    puts ctxo.dequeue
+    
+  
+  end
+end

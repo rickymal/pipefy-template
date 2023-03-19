@@ -1,7 +1,13 @@
 
 ## Improves (i'll put this in correct place)
 
-#### 
+#### next
+- [ ] focus on communications between apps
+- [ ] make the render using async-http async-io async-websocket and ffi (specific use cpu loading)
+https://github.com/socketry/async-io
+https://github.com/socketry/async-http
+https://socketry.github.io/async-websocket/guides/getting-started/index.html
+
 
 #### error handling and error reporting for various stages of the pipeline.
 - [ ] Use exceptions: Utilize exceptions to handle errors in your pipeline. Make sure to catch exceptions at the appropriate level and either handle them or propagate them to a higher level for further handling.

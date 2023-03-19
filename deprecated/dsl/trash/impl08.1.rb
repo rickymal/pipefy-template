@@ -166,7 +166,7 @@ class Dashboard
         
         @pipeline = pipebuider.build_pipeline()
         @head = @pipeline.inject_operators do |response|
-            binding.pry
+            
         end
     end
 

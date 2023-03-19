@@ -28,7 +28,7 @@ class Autoloader
         @modules = @modules.select {|mod| mod.method_defined?(method)} 
         @modules.each do |mod|
             # puts "importando #{mod}"
-            # binding.pry
+            # 
             # # pode ser utilizado o unbind também
             # instance.singleton_class.include mod
 
@@ -47,6 +47,6 @@ class Autoloader
         end
 
     rescue Exception => error
-        binding.pry
+        
     end
 end

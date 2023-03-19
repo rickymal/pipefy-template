@@ -38,7 +38,7 @@ class Darray < Array
             actual_array.clear()
         end
     rescue Concurrent::RejectedExecutionError => error
-        binding.pry
+        
     end
 
     def <<(val)

@@ -165,7 +165,7 @@ class PipeSequence
                     break
                 end
             rescue => exception
-            #    binding.pry 
+            #     
             end
             $flagoso = true
 
@@ -203,8 +203,8 @@ module Lambda
                     end
 
                     # Concatena pipe_sequence que estão no mesmo ambiente
-                    rp = nxt.inject(it) {|it, nxt| nxt.call it } rescue binding.pry
-                    # binding.pry if $flagoso
+                    rp = nxt.inject(it) {|it, nxt| nxt.call it } rescue 
+                    #  if $flagoso
 
                     next rp
                 end

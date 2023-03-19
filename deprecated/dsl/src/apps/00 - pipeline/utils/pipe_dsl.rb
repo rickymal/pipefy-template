@@ -65,7 +65,7 @@ class PipeDSL
                 ctx.send("#{key}=", plugin)
             end
             
-            method = ctx.method(method) rescue binding.pry
+            method = ctx.method(method) rescue 
             while resp = input_queue.dequeue
                 method.call(resp) do |data|
                     output_queue.enqueue(data)
@@ -73,7 +73,7 @@ class PipeDSL
             end
 
         rescue Exception => error
-            binding.pry
+            
         end
     end
   

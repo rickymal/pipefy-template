@@ -42,7 +42,7 @@ cnpj_consult = MyObject.new(it, at, ot) do
   draw do |drawer|
     consult do |opt|
       get do |up|
-        binding.pry
+        
         # ...
       end
     end

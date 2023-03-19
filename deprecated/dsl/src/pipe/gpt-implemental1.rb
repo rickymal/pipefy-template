@@ -137,7 +137,7 @@ class PipeDSL
     @reactor.async do
       super(input_queue, output_queue, method_name, @klass, @initializers, @extensions)
     rescue Exception => error
-      binding.pry
+      
     end
   end
 
@@ -319,6 +319,6 @@ Async do |it|
   ctxi.enqueue 100
   sleep 1
   puts ctxo.dequeue
-  binding.pry
+  
 
 end

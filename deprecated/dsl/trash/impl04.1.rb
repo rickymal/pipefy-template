@@ -69,7 +69,7 @@ module AsyncEnumerator
                 if nenv.next_env.env_status == :closed
                     break
                 end
-                binding.pry
+                
             end
 
 
@@ -110,7 +110,7 @@ class Batch
         @inventory[@idx] << val
 
         if @inventory[@idx].size() == 10
-            binding.pry
+            
             @idx += 1
             @nenv.next_env.env_status = :allow_send
         end
@@ -129,7 +129,7 @@ class Batch
     end
 
     def call(data)
-        @instance.send(@cmethod, data) rescue binding.pry
+        @instance.send(@cmethod, data) rescue 
     end
 end
 
@@ -172,7 +172,7 @@ class CoreDrawer
 
                 if seq.is_a? Struct::Engine
                     engine = seq.engine.new(10, 10)
-                    engine.inject_enviroment(klass, instance, seq.method(), self) rescue binding.pry
+                    engine.inject_enviroment(klass, instance, seq.method(), self) rescue 
                     next engine
                 end
             end
@@ -189,7 +189,7 @@ class CoreDrawer
 
     def to(engine, method)
 
-        @nib << @engine.new(engine, method, @template) rescue binding.pry
+        @nib << @engine.new(engine, method, @template) rescue 
         next_env = Environment.new(@nib)
         last_env = @sequence.last()
 

@@ -16,7 +16,7 @@ module ETL
     end
     
     def load(data)
-        binding.pry
+        
     end
 end
 

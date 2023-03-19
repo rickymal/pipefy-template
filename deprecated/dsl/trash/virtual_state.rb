@@ -8,7 +8,7 @@ class LightDom
     attr_accessor :this, :state, :it
 
     def initialize(instance, &blk)
-        binding.pry
+        
         @this = instance.call().dup()
         @actual_state = @this.state
         @it = self
@@ -67,7 +67,7 @@ app = App.new
 
 LightDom.new -> { app } do 
     this.mod()
-    binding.pry
+    
     it.using state: 'open' do
         this.mod()
     end
@@ -84,5 +84,5 @@ LightDom.new -> { app } do
 
     this.mod()
 end
-binding.pry
+
 

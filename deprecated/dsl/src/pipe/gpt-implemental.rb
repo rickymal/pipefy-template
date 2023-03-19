@@ -102,9 +102,9 @@ class PipeDSL
     # klass.post_initializers = post_initializers
     klass.include ctx
     @klass = klass
-    binding.pry
+    
     @ctx = klass.new(@initializers)
-    binding.pry
+    
   end
 
   def source(method_name)
@@ -113,7 +113,7 @@ class PipeDSL
     @reactor.async do |task|
       super(q1, q2, method_name, @klass, @initializers) 
     rescue Exception => error 
-      binding.pry 
+       
     end
   end
 
@@ -130,7 +130,7 @@ class PipeDSL
     q1, q2 = @path_builder.next
     @last_queue = q2
     klass = @klass
-    binding.pry
+    
     services = Ractor.make_shareable @services
     ractor = Ractor.new(Ractor.make_shareable(methods), klass,  services) do |methods, klass, services|
       ctx = klass.new(services.map {|it| it.instance_method('init')})
@@ -260,7 +260,7 @@ Async do |it|
   )
 
   ctxi, ctxo = pipe.build_pipeline()
-  binding.pry
+  
 
   # [OLD]
   # ctx, ctxo = Dsl.with App do

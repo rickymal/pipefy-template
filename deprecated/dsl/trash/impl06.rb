@@ -182,7 +182,7 @@ Async do |it|
     s2 = Darray.new procedures, b1, b2, it
     s3 = Darray.new(procedures, b2, nil, it) do |itu| 
         puts "pi pi pi tchu"
-        binding.pry
+        
     end
 
     s1.send 10

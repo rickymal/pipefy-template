@@ -64,7 +64,7 @@ class Fb
     end
 
     def second(data, status)
-        binding.pry
+        
         puts "Terminou valendo com #{data} com status #{status}"
     end
 

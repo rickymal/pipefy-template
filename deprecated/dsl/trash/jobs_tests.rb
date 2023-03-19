@@ -152,7 +152,6 @@ report = [] << ["interval", "simple", "async1","async2"]
 
     
     puts "report".center(80, '-')
-    binding.pry
+    
     report << [$sleeper, *benchs.values()]
 end
-binding.pry

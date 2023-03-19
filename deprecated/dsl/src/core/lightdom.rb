@@ -2,7 +2,7 @@ class LightDom
     attr_accessor :this, :state, :it
 
     def initialize(instance, &blk)
-        binding.pry
+        
         @this = instance.call().dup()
         @actual_state = @this.state
         @it = self

@@ -18,11 +18,11 @@ class Darray
         ctx.instance_variable_set("@#{fkwargs.fetch(:gateway_method)}", darray) 
         return darray
     rescue Exception => error
-        binding.pry
+        
     end
 
     def call(data)
-        binding.pry
+        
         if !@counter
             @counter = 0
         end
@@ -41,7 +41,7 @@ class OnDemmand
 
     def define_gmethod(gmethod, elastic_object, &blk)
         if !elastic_object.instance_methods.include? gmethod
-            binding.pry
+            
             raise Exception, "tem que responder!"
         end
 
@@ -59,7 +59,7 @@ class StreamETL
 
     def define_gmethod(gmethod, elastic_object, &blk)
         if !elastic_object.instance_methods.include? gmethod
-            binding.pry
+            
             raise Exception, "tem que responder!"
         end
 
@@ -144,7 +144,7 @@ module Lambda
                 source_instance = source_klass.new()
 
                 compiled_flows = flows.map do |ctx|
-                    binding.pry
+                    
                     method, engine_klass, args, kwargs, fargs, fkwargs = ctx
                     if engine_klass.nil?
                         next elastic_object.method(method)
@@ -156,15 +156,15 @@ module Lambda
                     next instance_engine
                 rescue Exception => error
 
-                    binding.pry
+                    
                 end
 
                 
                 # Descobrir como eu posso deixar isso mais eficiente 
                 source_instance.define_gmethod(gmethod, klass_or_module) do |initial_val|
-                    binding.pry
+                    
                     compile_flow_iterator = compiled_flows.each
-                    binding.pry
+                    
                     transf = compile_flow_iterator.next()
                     resp = transf.call initial_val
 
@@ -173,7 +173,7 @@ module Lambda
                     end
 
                     compiled_flows.inject(initial_val) do |actual, next_flow|
-                        binding.pry
+                        
                         content = next_flow.call actual
                     end
                 end
