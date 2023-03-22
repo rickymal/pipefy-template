@@ -391,7 +391,7 @@ module Bpp
 
 end
 
-if true
+if $0 == __FILE__
   # pipe = Pipefy.new(
   #   App,
   #   drawer: Example,

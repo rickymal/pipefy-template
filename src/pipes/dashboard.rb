@@ -1,4 +1,5 @@
 require 'pry-stack_explorer'
+
 require './src/utils/utils.rb'
 require './src/utils/davinci.rb'
 
@@ -35,9 +36,11 @@ ENV['RUBY_GC_OLDMALLOC_LIMIT_MAX'] = '32000000'
 # Sets the growth factor for the old object allocation limit.
 ENV['RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR'] = '1.2'
 
-
+require './src/envs/default.rb'
 
 App = Davinci.App name: "Dashboard", route: "/root" do |it|
+
+    
 
     find_ruby_files_by_path './src/extensions' do |path|
         
@@ -58,23 +61,33 @@ App = Davinci.App name: "Dashboard", route: "/root" do |it|
             it.use file => srv
         end
     end
-
+    
     # Carrega todo conteudo da pasta pipes excluindo-se
     var = find_ruby_files_by_path './src/pipes', ignore: [__FILE__] do |path|
         load_application(path) 
     end
+    
 end
-binding.pry
+
 # Aqui que eu vou construir toda a forma de UX
 if Davinci.is_root? App 
     Async do 
-
         # procura pelo nó filho chamado de 'app' (nome colocado no parâmetro 'name' do objeto Davinci.App)
-        app = App.new().find_context_by_name('app')
+        app = App.new()
+        binding.pry
+        app[0].new()
+        binding.pry
 
         Davinci.sequencialize(app['srcs'], app['flws'], app['loaders'])
 
         app.send 10
         
     end
+end
+
+
+
+SaaS.new do 
+    route '/', app.new()
+
 end

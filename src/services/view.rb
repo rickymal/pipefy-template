@@ -1,6 +1,8 @@
 
-# Será responsável por criar o websocket que permitirá enviar dados para o elemento 
-class Service 
+# Objeto responsável por fazer integrações com os apps
+class Service < Davinci::Integration
+end
 
 
+class Service < Davinci::Loader
 end
