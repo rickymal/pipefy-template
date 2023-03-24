@@ -14,9 +14,9 @@ App name: "app", route: "/ap1" do |it|
     it.pipeline do 
         source 'extract'
         flow ['transform']
-        flow ['load1']
-        flow ['load2']
-        flow ['load3']
+        actor ['load1']
+        actor ['load2']
+        actor ['load3']
     rescue Exception => erro 
         binding.pry
     end

@@ -15,7 +15,7 @@ App name: "app2", route: "/ap3" do |it|
         source 'extract'
         flow ['transform']
         flow ['load1']
-        flow ['load2']
+        actor ['load2']
         flow ['load3']
     end
 
