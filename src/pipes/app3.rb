@@ -1,6 +1,6 @@
 require './src/envs/actor.rb'
 
-App name: "app", route: "/ap1" do |it|
+App name: "app2", route: "/ap3" do |it|
     it.env = Env::Default
 
     it.template [ETL]

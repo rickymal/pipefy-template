@@ -17,26 +17,27 @@ rescue Exception => error
 end
 
 def find_ruby_files_by_path(path, nested = false, ignore: [], &blk)
-    ruby_files = []
-    Dir.foreach(path) do |filename|
-      next if filename == '.' || filename == '..' || ignore.include?(filename)
-  
-      file_path = File.join(path, filename)
-  
-      if File.directory?(file_path) && nested
-        ruby_files += find_ruby_files_by_path(file_path, nested: true, ignore: ignore, &blk)
-      elsif filename.end_with?('.rb')
-        absolute_path = File.expand_path(file_path)
-        ruby_files << absolute_path
-        yield absolute_path if blk
-      end
+  ignore = ignore.map {|it| it.split(/\/|\\/).last() }
+  ruby_files = []
+  Dir.foreach(path) do |filename|
+    next if filename == '.' || filename == '..' || ignore.include?(filename)
+
+    file_path = File.join(path, filename)
+
+    if File.directory?(file_path) && nested
+      ruby_files += find_ruby_files_by_path(file_path, nested: true, ignore: ignore, &blk)
+    elsif filename.end_with?('.rb')
+      absolute_path = File.expand_path(file_path)
+      ruby_files << absolute_path
+      yield absolute_path if blk
     end
-  
-    ruby_files
-  rescue Exception => error 
-    
   end
+
+  return ruby_files
+rescue Exception => error 
   
+end
+
 
 def get_constants_by_path(path, &blk)
     constants = []

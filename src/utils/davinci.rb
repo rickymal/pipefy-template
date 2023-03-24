@@ -1,16 +1,6 @@
 require 'async'
 require 'async/container'
 
-class StackExplorer
-    def stack(state = {})
-      # Execute the block with the current state
-      yield(state)
-  
-      # Remove the inner state changes
-      state.each { |key, _value| state.delete(key) }
-    end
-end
-
 
 
 class ContextTreeBuilder
@@ -24,7 +14,7 @@ class ContextTreeBuilder
     # ContextManager irá cuidar disso
 
 
-    class ElasticObject
+    class Activity
         
         def build_pipeline()
             qi, qo = @pipe.build_pipeline()
@@ -36,29 +26,32 @@ class ContextTreeBuilder
     
     require './src/core/pipefy.rb'
     class ContextManager
-        
+        attr_reader :uses
+        attr_reader :plugs
+        attr_reader :templates
+        attr_reader :route
+        attr_reader :name
+        attr_reader :dsl
+        attr_accessor :env
         attr_reader :child
         
-        def self.create_klass(plug, template, uses, worker, dsl)
+        def self.create_klass(dependencies)
             # Criar a classe que contem os serviços que serão utilizados
             # O problema é que quero evitar que o objeto capture o contexto ContextManager, isso irá me prejudicar no uso do Ractor
             # não ligar para isso por hora!
-            
-            # marshal
-
 
             pipelines = Array.new()
+            dsl = dependencies[:dsl].compact()
             Array(dsl).each do |pipeline|
                 if dsl.is_a? Proc 
-                    binding.pry
                     modl = Module.new
                     modl.define_method 'draw_pipeline', &dsl
                     pipelines << modl
                 end
             end
 
-            pipeline = pipelines.reduce {|pr1, pr2| pr1 >> pr2} 
-            klass = Class.new(ElasticObject) { }
+            pipeline = pipelines.reduce(lambda {}) {|pr1, pr2| pr1 >> pr2} 
+            klass = Class.new(Activity) { }
 
             klass.define_method :initialize do |channel|
 
@@ -76,28 +69,44 @@ class ContextTreeBuilder
 
             return klass
         end
-        
-        # Colocar tudo como vetor pois desejo que todos os apps-containers conectados logicamente no mesmo servidor 
-        def self.vectorize(context_manager, vect = [], plugs = [], template = [], dsl = [], uses = {}, env = [], route = [])
-            
-            # applicaation for use
-            plugs.push(*context_manager.plugs)
-            template.push(*context_manager.templates)
-            uses.merge!(context_manager.uses)
-            # binding.pry
-            env << context_manager.env
-            dsl << context_manager.dsl
-            route << context_manager.route
 
+        def self.has_dsl(dep)
+            return !dep[:dsl].compact().empty?
+        end
+
+        def self.has_env(dep)
+            return !dep[:env].compact().empty?
+        end
+        
+        $global = []
+        $global2 = []
+        $cnt = 0
+        # Colocar tudo como vetor pois desejo que todos os apps-containers conectados logicamente no mesmo servidor 
+        def self.vectorize(context_manager, vect = [], dependencies = {})
+        # def self.vectorize(context_manager, vect = [], stack = nil)
+            dependencies[:plugs] << context_manager.plugs.dup()
+            dependencies[:templates] << context_manager.templates.dup()
+            dependencies[:uses] << context_manager.uses.dup()
+            dependencies[:env] << context_manager.env.dup()
+            dependencies[:dsl] << context_manager.dsl.dup()
+            dependencies[:route] << context_manager.route.dup()
+            dependencies[:name] << context_manager.name.dup()
+            $global << dependencies
             
-            if !(dsl.compact.empty? || env.compact.empty?)
+            
+            if has_dsl(dependencies) && has_env(dependencies) 
                 
-                vect << [create_klass(plugs.uniq(), template.uniq(), uses, env.compact(), dsl.compact()), context_manager.name, route]
+                vect << {
+                    klass: create_klass(dependencies),
+                    name: dependencies[:name].last(),
+                    route: dependencies[:route].last.nil? ? nil : dependencies[:route].join()
+                }
             end
 
             context_manager.child.each do |child|
-                vectorize(child, vect, plugs.dup(), template.dup(), dsl.dup(), uses.dup(), env.dup(), route)
+                vectorize(child, vect, dependencies)
             end
+            dependencies[:route].pop()
         end
         
         # Por padrão utilizar o próprio contexto para uso
@@ -109,23 +118,26 @@ class ContextTreeBuilder
         # Aqui que irei criei todos os pipelines e os executar
         def new()
 
-            ctx = StackExplorer.new()
-            flattened_apps = Array.new()
-            ContextManager.vectorize self, flattened_apps, ctx
+            dependencies = {
+                uses: [],
+                plugs: [],
+                templates: [],
+                route: [],
+                name: [],
+                dsl: [],
+                env: [],
+                uses: [],
+            }
+            activities = Array.new()
+            ContextManager.vectorize self, activities, dependencies
 
-            return flattened_apps
+            return activities
         end
 
 
-        attr_reader :uses
-        attr_reader :plugs
-        attr_reader :templates
-        attr_reader :route
-        attr_reader :name
-        attr_reader :templates
-        attr_reader :dsl
-        attr_writer :env
-        attr_accessor :env
+        
+
+
         
         def initialize(name = nil, route = nil)
             @uses = {}
@@ -159,7 +171,10 @@ class ContextTreeBuilder
     end
     
     def App(name: nil, route: nil, &blk)
-        
+        $global2 << {
+            name:, route:
+        }
+        $cnt += 1
         ctx = ContextManager.new name, route
         @app_stack.last&.insert_children ctx
 
@@ -171,17 +186,11 @@ class ContextTreeBuilder
         blk.call(ctx)
         @app_stack.pop()
         
+
         return ctx
     end
     
-    # Onde a magia acontece
-    def build(root = @root)
-        roots = vectorize_app(root)
-    end
     
-    def vectorize_app(root)
-         
-    end
     
     def _get_app_stack()
         @app_stack

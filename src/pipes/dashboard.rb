@@ -38,7 +38,7 @@ ENV['RUBY_GC_OLDMALLOC_LIMIT_GROWTH_FACTOR'] = '1.2'
 
 require './src/envs/default.rb'
 
-App = Davinci.App name: "Dashboard", route: "/root" do |it|
+application = App name: "Dashboard", route: "/root" do |it|
 
     
 
@@ -64,30 +64,82 @@ App = Davinci.App name: "Dashboard", route: "/root" do |it|
     
     # Carrega todo conteudo da pasta pipes excluindo-se
     var = find_ruby_files_by_path './src/pipes', ignore: [__FILE__] do |path|
+        pp path
         load_application(path) 
     end
     
 end
+require 'json'
+require 'async'
+require 'async/http/internet'
+require 'async'
+require 'async/http/server'
 
-# Aqui que eu vou construir toda a forma de UX
-if Davinci.is_root? App 
-    Async do 
-        # procura pelo nó filho chamado de 'app' (nome colocado no parâmetro 'name' do objeto Davinci.App)
-        app = App.new()
+require 'async'
+require 'async/http/server'
+require 'async/http/client'
+require 'async/http/endpoint'
+require 'async/http/protocol/response'
+
+
+require 'uri'
+
+app = lambda do |request|
+
+    request.method # retorna o método
+    request.path # retornas as query parameters
+    query_params = URI.decode_www_form(request.path || '').to_h.map{|k,v| [k.sub('/?', ''), v]}.to_h
+    body = JSON.parse(request.head())
+	Protocol::HTTP::Response[200, {}, ["Hello World"]]
+end
+
+class ServelessAsync
+    def initialize()
+        @GETS = []
+    end
+
+    def add_saas(app)
+        # Parei aqiu hermano, fazer o seguinrte
+        # Criar o sistema que faz o Pipefy rodar no seu próprio ambiente (considerar apenas Threads e ractor com metodo send e take)
         binding.pry
-        app[0].new()
-        binding.pry
+        @GETS << 
 
-        Davinci.sequencialize(app['srcs'], app['flws'], app['loaders'])
+    end
 
-        app.send 10
-        
+    def call(request)
+        request.method # retorna o método
+        request.path # retornas as query parameters
+        routes, qparams = request.path.split("?")
+        query_params = URI.decode_www_form(qparams || '').to_h.map{|k,v| [k.sub('/?', ''), v]}.to_h
+        header = request.headers.to_h
+        body = JSON.parse(request.read())
+        Protocol::HTTP::Response[200, {}, ["Hello World"]]
     end
 end
 
 
+serveless = ServelessAsync.new()
+endpoint = Async::HTTP::Endpoint.parse('http://127.0.0.1:3003')
+server = Async::HTTP::Server.new(
+    serveless, 
+    endpoint
+)
 
-SaaS.new do 
-    route '/', app.new()
+# Aqui que eu vou construir toda a forma de UX
+if Davinci.is_root? application 
+    Async do |task|
+        # procura pelo nó filho chamado de 'app' (nome colocado no parâmetro 'name' do objeto Davinci.App)
+        apps = application.new()
 
+        apps.each do |app|
+            serveless.add_saas(app) 
+        end
+
+        binding.pry
+        task.async do  
+            server.run()
+        end 
+        
+    end
 end
+
