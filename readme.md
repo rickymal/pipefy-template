@@ -1,5 +1,6 @@
 
 ## Improves (i'll put this in correct place)
+I, Henrique Mauler, is the documentation (after a while the chatGPT will give de docs for you, don't be afraid!)
 
 #### next
 - [ ] focus on communications between apps
