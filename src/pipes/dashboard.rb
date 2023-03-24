@@ -93,33 +93,48 @@ app = lambda do |request|
 	Protocol::HTTP::Response[200, {}, ["Hello World"]]
 end
 
+# class Contente
+#     extend Davinci::Hybrid
+
+#     def m1()
+#     end
+# end
+
+
 class ServelessAsync
     def initialize()
-        @GETS = []
+        @GETS = Hash.new()
     end
 
     def add_saas(app)
         # Parei aqiu hermano, fazer o seguinrte
         # Criar o sistema que faz o Pipefy rodar no seu próprio ambiente (considerar apenas Threads e ractor com metodo send e take)
-        binding.pry
-        @GETS << 
+        ctx = app[:klass].new().build_pipeline()
+        @GETS[app.fetch(:route)] = ctx
 
     end
 
     def call(request)
+
+        # Realizar a conversão dos dados
         request.method # retorna o método
         request.path # retornas as query parameters
+
         routes, qparams = request.path.split("?")
         query_params = URI.decode_www_form(qparams || '').to_h.map{|k,v| [k.sub('/?', ''), v]}.to_h
         header = request.headers.to_h
         body = JSON.parse(request.read())
-        Protocol::HTTP::Response[200, {}, ["Hello World"]]
+        binding.pry
+        @GETS[routes].send(*qparams)
+
+        Protocol::HTTP::Response[200, {}, @GETS[routes].take()]
+        # Protocol::HTTP::Response[200, {}, ["Hello World"]]
     end
 end
 
 
 serveless = ServelessAsync.new()
-endpoint = Async::HTTP::Endpoint.parse('http://127.0.0.1:3003')
+endpoint = Async::HTTP::Endpoint.parse('http://127.0.0.1:3004')
 server = Async::HTTP::Server.new(
     serveless, 
     endpoint
@@ -135,7 +150,6 @@ if Davinci.is_root? application
             serveless.add_saas(app) 
         end
 
-        binding.pry
         task.async do  
             server.run()
         end 

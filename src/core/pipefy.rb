@@ -80,7 +80,7 @@ module Operator
     ctx = klass.new(dependencies)
 
     extensions.each do |key, val|
-      ctx.singleton_class.attr_accessor key
+      ctx.singleton_class.attr_accessor key rescue binding.pry
       plugin = val.is_a?(Class) ? val.new(ctx) : val
       plugin.on_load() if plugin.respond_to?('on_load')
       ctx.send("#{key}=", plugin)

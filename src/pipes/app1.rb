@@ -12,11 +12,13 @@ App name: "app", route: "/ap1" do |it|
     
     
     it.pipeline do 
-        src 'extract'
-        flw 'transform'
-        flw 'load1'
-        flw 'load2'
-        flw 'load3'
+        source 'extract'
+        flow ['transform']
+        flow ['load1']
+        flow ['load2']
+        flow ['load3']
+    rescue Exception => erro 
+        binding.pry
     end
 
 end

@@ -2,6 +2,36 @@ require 'async'
 require 'async/container'
 
 
+# Para testes apenas
+module Template
+    def extract(data)
+        puts "usando #{data} faça:".center 80, '-'
+        10.times do |ctx|
+            puts "sourcerizando valor #{ctx}"
+            yield ctx
+        end
+    end
+
+    def transform(data)
+        puts "transformando em transform #{data}"
+        data + 1
+    end
+    
+    def load1(data)
+        puts "transformando em #{__method__} #{data}"
+        data + 1
+    end
+    
+    def load2(data)
+        puts "transformando em load2 #{data}"
+        data + 1
+    end
+
+    def load3(data)
+        puts "transformando em load3 #{data}"
+        data + 1
+    end
+end
 
 class ContextTreeBuilder
     def initialize()
@@ -15,11 +45,23 @@ class ContextTreeBuilder
 
 
     class Activity
+        attr_accessor :pipe
+        attr_accessor :qi
+        attr_accessor :qo
         
         def build_pipeline()
-            qi, qo = @pipe.build_pipeline()
+            @qi, @qo = @pipe.build_pipeline()
+            return self
         end
-        
+
+
+        def send(data)
+            @qi.enqueue data
+        end
+
+        def take()
+            @qo.dequeue
+        end
     end
     
     sleep 1
@@ -39,30 +81,36 @@ class ContextTreeBuilder
             # Criar a classe que contem os serviços que serão utilizados
             # O problema é que quero evitar que o objeto capture o contexto ContextManager, isso irá me prejudicar no uso do Ractor
             # não ligar para isso por hora!
-
+            
             pipelines = Array.new()
-            dsl = dependencies[:dsl].compact()
-            Array(dsl).each do |pipeline|
-                if dsl.is_a? Proc 
-                    modl = Module.new
-                    modl.define_method 'draw_pipeline', &dsl
-                    pipelines << modl
-                end
-            end
+            dsl = dependencies[:dsl].compact().last()
+            modl = Module.new
+            modl.define_method 'draw_pipeline', &dsl
 
-            pipeline = pipelines.reduce(lambda {}) {|pr1, pr2| pr1 >> pr2} 
+
+            # Array(dsl).each do |pipeline|
+            # end
+            
+
+            # pipeline = pipelines.reduce(lambda {}) {|pr1, pr2| pr1 >> pr2} 
+
+            
             klass = Class.new(Activity) { }
 
-            klass.define_method :initialize do |channel|
+            # Seria interessant se isso pudesse ser feito, e a classe pudesse ser unica ou do tipo
+            # singleton compartilhável por meio de um ractor (classe remota)
+            # pensar nessa implementação
+            # klass.include_klass Activity
 
-                # Irá controlar aspectos de execução
-                @io = channel self
-                
+            klass.define_method :initialize do
+
+                # # Irá controlar aspectos de execução
+                # @io = channel self
                 @pipe = Pipefy.new(
-                    template,
-                    drawer: dsl,
-                    services: uses,
-                    extensions: plug,
+                    [Template],
+                    drawer: modl,
+                    services: dependencies[:plugs].flatten().uniq(),
+                    extensions: Hash.new.merge(*dependencies[:uses]),
                     config: PipefyConfig.new(ractor_count: 4, queue_size: 50, batch_size: 10)
                 )
             end
