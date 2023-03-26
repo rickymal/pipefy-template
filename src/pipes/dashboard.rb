@@ -63,7 +63,7 @@ application = App name: "Dashboard", route: "/root" do |it|
     end
     
     # Carrega todo conteudo da pasta pipes excluindo-se
-    var = find_ruby_files_by_path './src/pipes', ignore: [__FILE__] do |path|
+    var = find_ruby_files_by_path './src/pipes', ignore: [__FILE__, 'server.rb'] do |path|
         pp path
         load_application(path) 
     end
@@ -100,10 +100,19 @@ end
 #     end
 # end
 
+def generate_token(length = 32)
+    charset = ('a'..'z').to_a + ('A'..'Z').to_a + ('0'..'9').to_a
+    token = Array.new(length) { charset.sample }.join
+    return token
+end
+require 'async/http/internet'
+
+require './src/core/promises.rb'
 
 class ServelessAsync
     def initialize()
         @GETS = Hash.new()
+        @tokens = {}
     end
 
     def add_saas(app)
@@ -119,16 +128,72 @@ class ServelessAsync
         # Realizar a conversão dos dados
         request.method # retorna o método
         request.path # retornas as query parameters
-
+        
         routes, qparams = request.path.split("?")
+        routes = routes.split("/").join '/'
         query_params = URI.decode_www_form(qparams || '').to_h.map{|k,v| [k.sub('/?', ''), v]}.to_h
         header = request.headers.to_h
-        body = JSON.parse(request.read())
-        binding.pry
-        @GETS[routes].send(*qparams)
+        body = JSON.parse(request.read()) if !request.body.nil?
+        if request.method == 'POST'
+            
+            @GETS[routes].send(query_params)
+            if (!header['token-request'].nil? && header['token-request'].first() == 'true') || header['callback-endpoint']
+                if header['token-request'].first() == 'true'
+                    resp = generate_token()
+            
+                    @tokens[resp] = Promise.run do 
+                        @GETS[routes].take()
+                    end
+                end
 
-        Protocol::HTTP::Response[200, {}, @GETS[routes].take()]
-        # Protocol::HTTP::Response[200, {}, ["Hello World"]]
+                if header['callback-endpoint']
+                    endpoint = header['callback-endpoint'].first()
+                    client = Async::HTTP::Internet.new
+                    
+                    resp = ''
+
+                    headers = { 'Content-Type' => 'application/json' }
+
+                    Promise.run do 
+                        @GETS[routes].take()
+                    end.then do |response|
+
+                        # Parei aqui, no outro lado não recebo .json algum
+                        binding.pry
+                        body = JSON.generate({
+                            data: response,
+                            type: response.class
+                        })
+                        response = client.post(endpoint, body: body, headers: headers)
+                       
+                    end
+
+                    return Protocol::HTTP::Response[200, {}, [{
+                        status: 'required-callback',
+                        endpoint: endpoint
+                    }.to_json()]]
+          
+                end
+
+
+                return Protocol::HTTP::Response[200, {}, [resp]]
+            end
+
+            Protocol::HTTP::Reponse[200, {}, [@GETS[routes].take()]]
+            
+            # Protocol::HTTP::Response[200, {}, Enumerator.new do |yld|
+            #     yld << {pipeline: data}.to_json()
+            # end]
+        elsif 
+            request.method == 'GET'
+            if query_params['token'].nil?
+                return Protocol::HTTP::Response[400, {}, ["coloca o token em query params meu/minha patrão/patroa"]]
+            end
+            
+            
+
+            return Protocol::HTTP::Response[200, {}, [@tokens[query_params['token']].to_h.to_json()]] 
+        end
     end
 end
 

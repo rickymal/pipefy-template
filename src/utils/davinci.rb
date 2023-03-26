@@ -6,6 +6,7 @@ require 'async/container'
 module Template
     def extract(data)
         puts "usando #{data} faça:".center 80, '-'
+        # data["query1"].to_i
         10.times do |ctx|
             puts "sourcerizando valor #{ctx}"
             yield ctx
