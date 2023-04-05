@@ -51,17 +51,40 @@ class ContextTreeBuilder
         attr_accessor :qo
         
         def build_pipeline()
-            @qi, @qo = @pipe.build_pipeline()
+            # binding.pry
+            @_env = @env.new(@pipes)
+            # binding.pry
+            # if @pipes.size() > 1 || true
+
+            #     # Preciso fazer com que essa comunicação ocorra caramba
+                
+            #     pipelines = @pipes.map {|it| it.build_pipeline()}
+            #     @qi = pipelines[0][0]
+            #     @qo = pipelines[-1][-1]
+            #     pipelines.each_cons(2) do |p1, p2|
+            #         Async do 
+            #             while resp = p1[1].dequeue
+            #                 p2[0].enqueue resp
+            #             end
+            #         end
+            #     end
+            # else
+            #     @qi, @qo = @pipe.build_pipeline()
+            # end
             return self
         end
 
 
         def send(data)
-            @qi.enqueue data
+            @_env.send(data)
+        end
+
+        def size()
+            @_env.size()
         end
 
         def take()
-            @qo.dequeue
+            @_env.take()
         end
     end
     
@@ -85,8 +108,13 @@ class ContextTreeBuilder
             
             pipelines = Array.new()
             dsl = dependencies[:dsl].compact().last()
-            modl = Module.new
-            modl.define_method 'draw_pipeline', &dsl
+            
+            mdls = []
+            Array(dsl).each do |dsl|
+                modl = Module.new
+                modl.define_method 'draw_pipeline', &dsl 
+                mdls << Ractor.make_shareable(modl)
+            end
 
 
             # Array(dsl).each do |pipeline|
@@ -102,18 +130,22 @@ class ContextTreeBuilder
             # singleton compartilhável por meio de um ractor (classe remota)
             # pensar nessa implementação
             # klass.include_klass Activity
+            
+            klass.define_method :initialize do |env|
 
-            klass.define_method :initialize do
+                @env = env
 
                 # # Irá controlar aspectos de execução
                 # @io = channel self
-                @pipe = Pipefy.new(
-                    [Template],
-                    drawer: modl,
-                    services: dependencies[:plugs].flatten().uniq(),
-                    extensions: Hash.new.merge(*dependencies[:uses]),
-                    config: PipefyConfig.new(ractor_count: 4, queue_size: 50, batch_size: 10)
-                )
+                @pipes = Array(mdls).map do |modl|
+                    @pipe = Pipefy.new(
+                        [Template],
+                        drawer: modl,
+                        services: dependencies[:plugs].flatten().uniq(),
+                        extensions: Hash.new.merge(*dependencies[:uses]),
+                        config: PipefyConfig.new(ractor_count: 4, queue_size: 50, batch_size: 10)
+                    )
+                end
             end
 
             return klass
@@ -148,7 +180,8 @@ class ContextTreeBuilder
                 vect << {
                     klass: create_klass(dependencies),
                     name: dependencies[:name].last(),
-                    route: dependencies[:route].last.nil? ? nil : dependencies[:route].join()
+                    route: dependencies[:route].last.nil? ? nil : dependencies[:route].join(),
+                    env: dependencies[:env].compact().last()
                 }
             end
 
@@ -162,6 +195,11 @@ class ContextTreeBuilder
         def pipeline(ctx = self, autorun: false, &blk)
             @ctx = ctx
             @dsl = blk
+        end
+
+        def pipefy(*pipelines)
+            dsls = pipelines.map {|it| it.dsl}
+            @dsl = dsls
         end
         
         # Aqui que irei criei todos os pipelines e os executar
@@ -234,7 +272,6 @@ class ContextTreeBuilder
         @app_stack.push(ctx)
         blk.call(ctx)
         @app_stack.pop()
-        
 
         return ctx
     end

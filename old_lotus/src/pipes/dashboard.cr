@@ -84,6 +84,7 @@ require 'async/http/protocol/response'
 
 require 'uri'
 
+
 app = lambda do |request|
 
     request.method # retorna o método
@@ -111,6 +112,8 @@ require './src/core/promises.rb'
 
 class ServelessAsync
     def initialize()
+        @APPLICATIONS = {}
+        @RUNNING_APPS = {}
         @GETS = Hash.new()
         @tokens = {}
     end
@@ -118,31 +121,84 @@ class ServelessAsync
     def add_saas(app)
         # Parei aqiu hermano, fazer o seguinrte
         # Criar o sistema que faz o Pipefy rodar no seu próprio ambiente (considerar apenas Threads e ractor com metodo send e take)
-        ctx = app[:klass].new().build_pipeline()
-        @GETS[app.fetch(:route)] = ctx
+        # ctx = app[:klass].new(app[:env]).build_pipeline()
+        
 
+        # # A partir de agora, registramos os nomes, mas precisaremos dar o fork para que consigamos utilizar a ferramenta
+        # if app.fetch(:name)&.empty?
+        #     @APPLICATIONS[app.fetch(:name)] = app
+        # end
+
+        # @GETS[app.fetch(:route)] = ctx
+        @APPLICATIONS[app.fetch(:route)] = app
     end
 
     def call(request)
 
         # Realizar a conversão dos dados
         request.method # retorna o método
-        request.path # retornas as query parameters
-        
+        request.path # retornas as query parameters        
         routes, qparams = request.path.split("?")
         routes = routes.split("/").join '/'
         query_params = URI.decode_www_form(qparams || '').to_h.map{|k,v| [k.sub('/?', ''), v]}.to_h
         header = request.headers.to_h
         body = JSON.parse(request.read()) if !request.body.nil?
-        if request.method == 'POST'
+
+        if request.method == 'FORK'
+            resp = generate_token()
+
+            if query_params['enviroment'] == 'task'
+                ctx = @APPLICATIONS[routes][:klass].new @APPLICATIONS[routes][:env]
+
+                # Como eu vou fazer aqui?
+                app = ctx.build_pipeline()
+                 
+
+                @RUNNING_APPS[resp] = app 
+            end
+
             
-            @GETS[routes].send(query_params)
+
+            if query_params['enviroment'] == 'container'
+                binding.pry
+                container = Async::Container.new
+                input, output = Async::IO.pipe
+
+                container.spawn do |instance|
+                    app = ctx.build_pipeline()
+                    ctx = app[:klass].new(app[:env]).build_pipeline()
+                    output.close()
+                    stream = Async::IO::Stream.new(input)
+
+                    while message = stream.gets 
+                        puts "OI"
+                    end
+                end
+
+                stream = Async::IO::Stream.new(output)
+            end
+
+
+            return Protocol::HTTP::Response[200, {}, [{
+                type: query_params['enviroment'],
+                tid: resp,
+            }.to_json()]]
+
+        end
+
+        if request.method == 'POST'
+            tid = header['tid'].first()
+            
+            @RUNNING_APPS[tid].send(query_params)
+
+            # @GETS[routes].send(query_params)
             if (!header['token-request'].nil? && header['token-request'].first() == 'true') || header['callback-endpoint']
                 if header['token-request'].first() == 'true'
                     resp = generate_token()
             
                     @tokens[resp] = Promise.run do 
-                        @GETS[routes].take()
+                        # @RUNNING_APPS[tid]
+                        @RUNNING_APPS[tid].take()
                     end
                 end
 
@@ -155,16 +211,20 @@ class ServelessAsync
                     headers = { 'Content-Type' => 'application/json' }
 
                     Promise.run do 
-                        @GETS[routes].take()
+                        @RUNNING_APPS[tid].take()
                     end.then do |response|
 
                         # Parei aqui, no outro lado não recebo .json algum
-                        binding.pry
+
                         body = JSON.generate({
                             data: response,
                             type: response.class
                         })
-                        response = client.post(endpoint, body: body, headers: headers)
+                        begin
+                            response = client.post(endpoint, headers, body)
+                        rescue => exception
+                            
+                        end
                        
                     end
 
@@ -172,26 +232,26 @@ class ServelessAsync
                         status: 'required-callback',
                         endpoint: endpoint
                     }.to_json()]]
-          
                 end
 
 
                 return Protocol::HTTP::Response[200, {}, [resp]]
             end
 
-            Protocol::HTTP::Reponse[200, {}, [@GETS[routes].take()]]
+
+            return Protocol::HTTP::Response[200, {}, [@RUNNING_APPS[tid].take().to_s()]]
+            # return Protocol::HTTP::Response[200, {}, [@GETS[routes].take().to_s()]]
             
             # Protocol::HTTP::Response[200, {}, Enumerator.new do |yld|
             #     yld << {pipeline: data}.to_json()
             # end]
-        elsif 
-            request.method == 'GET'
+        elsif request.method == 'GET' 
+            
             if query_params['token'].nil?
                 return Protocol::HTTP::Response[400, {}, ["coloca o token em query params meu/minha patrão/patroa"]]
             end
             
-            
-
+            binding.pry
             return Protocol::HTTP::Response[200, {}, [@tokens[query_params['token']].to_h.to_json()]] 
         end
     end

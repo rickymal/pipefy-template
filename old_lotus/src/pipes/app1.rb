@@ -17,8 +17,6 @@ App name: "app", route: "/ap1" do |it|
         actor ['load1']
         actor ['load2']
         actor ['load3']
-    rescue Exception => erro 
-        binding.pry
     end
 
 end

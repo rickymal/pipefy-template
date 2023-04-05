@@ -113,6 +113,10 @@ module Operator
 
 end
 
+class Threadpool
+
+
+end
 
 class PipeDSL
   attr_reader :last_queue
@@ -123,7 +127,14 @@ class PipeDSL
     _, input_queue = path_builder.next
 
     pipe_dsl = new(module_ctx, path_builder, services, extensions, config)
+    puts "Is shareable".center(80, '-')
+    puts "#{Ractor.shareable?(blk)}"
+    puts "#{Ractor.shareable?(pipe_dsl)}"
     blk.bind(pipe_dsl).call()
+    pipe_dsl.instance_exec(&blk.bind(pipe_dsl))
+    puts "is blk #{blk.class}"
+    puts "is blk binded #{blk.bind(pipe_dsl).class}"
+    puts "Is shareable".center(80, '-')
 
     return input_queue, pipe_dsl.last_queue
   end
@@ -150,7 +161,7 @@ class PipeDSL
   def initialize(ctx, path_builder, services, extensions, config)
     @path_builder = path_builder
     @module = ctx
-    @reactor = Async::Task.current
+    @reactor = Async::Task.current? ? Async::Task.current : Threadpool.new() 
     @config = config
     @method_calls = []
 
