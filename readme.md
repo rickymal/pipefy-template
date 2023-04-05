@@ -1,5 +1,5 @@
 # Lotus
-**Não está completo**
+**O Projeto está passando por um processo de refatoração. Apaguei tudo e estou reescrevendo**
 
 Lotus é um framework para criar e gerenciar aplicativos assíncronos e pipelines de processamento de dados. Ele permite a criação de aplicativos modulares e extensíveis, com suporte para orquestração, agendamento e integração com serviços externos. Além disso, oferece uma interface no-code, facilitando o desenvolvimento e a integração de aplicações.
 
