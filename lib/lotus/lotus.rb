@@ -1,11 +1,11 @@
-# lib/seu_projeto.rb
+# lib/lotus.rb
 
-require_relative 'seu_projeto/app'
-require_relative 'seu_projeto/pipefy'
-require_relative 'seu_projeto/container'
-require_relative 'seu_projeto/services/scheduler'
-require_relative 'seu_projeto/services/no_code_service'
-require_relative 'seu_projeto/services/http_service'
+require_relative 'lotus/app'
+require_relative 'lotus/pipefy'
+require_relative 'lotus/container'
+require_relative 'lotus/services/scheduler'
+require_relative 'lotus/services/no_code_service'
+require_relative 'lotus/services/http_service'
 
 module Lotus
   # Classe principal do seu framework

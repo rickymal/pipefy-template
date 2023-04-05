@@ -1,4 +1,4 @@
-# lib/seu_projeto/services/scheduler.rb
+# lib/lotus/services/scheduler.rb
 
 require 'rufus-scheduler'
 
