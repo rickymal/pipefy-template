@@ -3,7 +3,7 @@
 require 'bundler/setup'
 Bundler.require(:default, :test)
 
-require_relative '../lib/seu_projeto'
+require_relative '../lib/lotus'
 
 RSpec.configure do |config|
   # Algumas configurações básicas do RSpec podem ser adicionadas aqui

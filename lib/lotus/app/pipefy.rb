@@ -1,4 +1,4 @@
-# lib/seu_projeto/app/pipefy.rb
+# lib/lotus/app/pipefy.rb
 
 module Lotus
     module App

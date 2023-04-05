@@ -1,4 +1,4 @@
-# lib/seu_projeto/services/http_service.rb
+# lib/lotus/services/http_service.rb
 
 require 'net/http'
 require 'uri'

@@ -11,3 +11,4 @@ gem 'async-websocket'
 gem "async-container", "~> 0.16.12"
 
 gem "async-rest", "~> 0.12.4"
+

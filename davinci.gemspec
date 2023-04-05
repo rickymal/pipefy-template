@@ -1,4 +1,4 @@
-# seu_projeto.gemspec
+# lotus.gemspec
 
 Gem::Specification.new do |s|
     s.name        = 'davinci'
@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
     s.authors     = ["henrique mauler"]
     s.email       = 'henriquemauler@gmail.com'
     s.files       = Dir['lib/**/*.rb']
-    s.homepage    = 'https://github.com/seu_nome/seu_projeto'
+    s.homepage    = 'https://github.com/seu_nome/lotus'
     s.license     = 'GPL'
   
     # Adicione suas dependências aqui, por exemplo:

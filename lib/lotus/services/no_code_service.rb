@@ -1,4 +1,4 @@
-# lib/seu_projeto/services/no_code_service.rb
+# lib/lotus/services/no_code_service.rb
 
 module Lotus
     module Services

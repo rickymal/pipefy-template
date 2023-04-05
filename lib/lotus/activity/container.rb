@@ -1,4 +1,4 @@
-# lib/seu_projeto/app/container.rb
+# lib/lotus/app/container.rb
 
 module Lotus
     module App
