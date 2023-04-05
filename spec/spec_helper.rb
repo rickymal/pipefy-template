@@ -5,6 +5,10 @@ Bundler.require(:default, :test)
 
 require_relative '../lib/lotus'
 
+require 'lotus'
+require 'minitest/autorun'
+
+
 RSpec.configure do |config|
   # Algumas configurações básicas do RSpec podem ser adicionadas aqui
   config.expect_with :rspec do |expectations|
