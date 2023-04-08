@@ -1,1 +1,0 @@
-# Usar anotações novas, esquecer o uso do lambda
