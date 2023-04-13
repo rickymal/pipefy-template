@@ -184,14 +184,47 @@ Async do
     end
 
 
-    it "Fazendo uma inversão de controle com o serviço (n9n)" do 
-      class N9n
+    # n1n é um serviço para gerenciar a execução de processos 
+    # Permite observar e chamar métodos internos de um pipe
+    it "Fazendo uma inversão de controle com o serviço (n1n)" do 
+      class RaiseError
+        def call()
+          puts "Working!!!"
+          sleep 5
+          puts "OOps"
+          raise Exception, "simulating an error"
+        end
       end
 
-      lotus = Lotus::Activity::Container.new()
-      lotus.name = 'n9n'
-      
+      module N1N
+        class Client < Lotus::Activity::Service
+        end
+      end
 
+      n9n = N1N::Client.new()
+      lotus = Lotus::Activity::Container.new(n9n, policy: "no-rules")
+      lotus.name = 'n9n'
+      lotus.pipe RaiseError
+      
+      task = n9n.start('n9n')
+      assert_equal task.status, 'initialized'
+      n9n.call()
+      assert_equal task.status, 'running'
+      sleep 7
+      assert_equal task.status, 'failed'
+      assert_equal task.error.type, Exception
+      assert_equal task.error.message, "simulating an error"
+
+      task = n9n.start('n9n')
+      assert_equal task.status, 'initialized'
+      n9n.call()
+      assert_equal task.status, 'running'
+      n9n.kill('n9n')
+      assert_equal task.status, 'killed'
+
+    end
+
+    it 'deve ser capaz de cirar um objeto remoto para ser acessado, uma classe movida para um ractor' do 
     end
   end
 
