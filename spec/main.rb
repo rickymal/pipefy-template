@@ -23,6 +23,15 @@ describe "testando o miniteste" do
   end
 end
 
+# Classe que será usada para definir como a aplicação/pipeline será construida
+class App < Lotus::Activity::Application
+
+  def reactor()
+    return Async::Task.current
+  end
+
+end
+
 describe "testes básicos em ambientes diferente" do
   it "Devo conseguir fazer o 'hello world' apenas com método 'flow' (task)" do 
     Async do |task|
@@ -38,9 +47,9 @@ describe "testes básicos em ambientes diferente" do
         
       end
 
-      sleep 1
+      task.sleep 1
       app.call()
-      sleep 2
+      task.sleep 1
 
       assert_equal "Hello, world!", @resp 
       app.call END_APP
@@ -84,13 +93,8 @@ describe "testes básicos em ambientes diferente" do
   end
 end
 
-class Activity < Lotus::Activity::Container
 
-  def new()
 
-  end
-
-end
 
 
 describe "testes básicos com serviços" do 
@@ -99,7 +103,7 @@ describe "testes básicos com serviços" do
     Async do |task|
       print_service = PrintService.new('henrique')
       
-      lotus = Lotus::Activity::Container.new()
+      lotus = Lotus::Activity::Container.new App
       lotus.name = 'hello world with service'
       lotus.pipefy HelloWithServiceArgs, print_service: print_service  
 
@@ -122,7 +126,7 @@ describe "testes básicos com serviços" do
     Async do |task|
       print_service = PrintService.new('henrique')
       
-      lotus = Lotus::Activity::Container.new()
+      lotus = Lotus::Activity::Container.new App
       lotus.name = 'hello world with service'
       lotus.pipefy HelloWithServiceArgs, print_service: print_service  
 

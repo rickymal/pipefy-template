@@ -96,7 +96,7 @@ class HelloWorld
   extend Lotus::Method::Flow
 
   def call(data = nil)
-    pp "Hello, world!"
+    return "Hello, world!"
   end
 end
 
@@ -248,16 +248,21 @@ module Lotus
       def initialize(activities, services, &blk)
         pipe_flow = QueuePathBuilder.new
         @activities = activities
-        reactor = Async::Task.current
-
+        
+        if self.respond_to? :reactor 
+          reactor = self.reactor()
+        else
+          reactor = Async::Task.current()
+        end
+        
         input_queue, output_queue = pipe_flow.next
         @input_queue = input_queue
 
         @activities.each do |activity|
           
           pipe, service = activity
-
-          pipe_instance = pipe.create_pipe_task(reactor, input_queue, output_queue, service)
+          
+          pipe_instance = pipe.create_pipe_task(reactor, input_queue, output_queue, service) rescue binding.pry
           input_queue, output_queue = pipe_flow.next
           @output_queue = input_queue
         end
@@ -280,7 +285,8 @@ module Lotus
     class Container
       attr_accessor :name
 
-      def initialize
+      def initialize(app = Lotus::Activity::Application)
+        @app = app
         @activities = []
       end
 
@@ -289,7 +295,8 @@ module Lotus
       end
 
       def new(services = [], &blk)
-        Application.new(@activities, services, &blk)
+
+        @app.new(@activities, services, &blk)
       end
     end
   end
