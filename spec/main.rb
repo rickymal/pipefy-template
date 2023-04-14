@@ -7,223 +7,246 @@ require_relative '../lib/lib.rb'
 require 'async'
 Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
+# spec/activity/container_test.rb
 
-Async do 
+require "minitest/autorun"
+require 'pry'
+require 'minitest/reporters'
+require_relative '../lib/lib.rb'
+require 'async'
+Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
 
-  describe 'testando miniteste' do
-    it 'simplesmente deve funcionar' do 
-      assert true
-    end
+describe "testando o miniteste" do  
+  it "verificando se simplesmente funciona" do 
+    assert true
   end
-  
-  describe 'testes básico com diferentes ambientes' do 
-    class SayHello < Lotus::Activity::Pipe
-      def call(name:)
-        return "#{name}: Hello, "
-      end
-    end
+end
 
-    class SayWorld < Lotus::Activity::Pipe
-      def call(phrase)
-        pp "#{phrase} world!"
-      end
-    end
+# Classe que será usada para definir como a aplicação/pipeline será construida
+class App < Lotus::Activity::Application
 
-    class CounterUntil10 < Lotus::Activity::Pipe
-      def call()
-        10.times do |it|
-          yield it
-        end
-      end
-    end
-
-    class SayHelloCount < Lotus::Activity::Pipe
-      def call(content)
-        pp "Contendo #{content}"
-      end
-    end
-
-
-  
-    it 'deve ser capaz de criar um hello world utilizando o método \'flow\' que utilize a gem async' do 
-      lotus = Lotus::Activity::Container.new()
-
-      lotus.pipe(SayHello, Lotus::Method::Flow)
-      lotus.pipe(SayWorld, Lotus::Method::Flow)
-      
-      app = lotus.compile()
-      app.run name: "Henrique" do |resp|
-        assert_equal resp, "Hello, world! Henrique"
-      end.await()
-    end
-
-    it 'deve ser capaz de criar um hello world utilizando o método \'stream\' que utilize a gem async' do 
-      # Responsável por gerenciar os processos 
-      lotus = Lotus::Activity::Container.new()
-
-      lotus.pipe(CounterUntil10, Lotus::Method::Stream)
-      lotus.pipe(SayHelloCount, Lotus::Method::Flow)
-
-    end
-
-    it 'deve ser capaz de criar um simples ETL utilizando os três métodos principais' do 
-      lotus = Lotus::Activity::Container.new()
-      lotus.pipe(ExtractData, Lotus::Method::Stream)
-      lotus.pipe(TransformData, Lotus::Method::Actor)
-      lotus.pipe(LoadData, Lotus::Method::Flow)
-
-      app = lotus.compile 
-
-      app.run 10 do |resp|
-        pp resp
-      end.await()
-    end
-
+  def reactor()
+    return Async::Task.current
   end
 
-  describe 'testes basicos com serviços' do 
-    class SayHello < Lotus::Activity::Pipe
-      def call()
-        return "#{self.yml.name}: Hello, "
-      end
-    end
+end
 
-    class SayWorld < Lotus::Activity::Pipe
-      def call(phrase)
-        pp "#{phrase} world!"
-      end
-    end
-
-    class SayWorldWithCallback < Lotus::Activity::Pipe
-
-      def 
-      def call(phrase)
-        pp "#{phrase} world!"
-      end
-    end
-
-    class NameService < Lotus::Activity::Service
-      def self.on_klass_load(container)
-        container.app('say_world').set_dependencies yml: self
-      end
-
-      def name()
-        return 'henrique'
-      end
-
-      def self.on_instance_load(container)
-      end
-    end
-
-    class PrintCallback < Lotus::Activity::Service
-      def on_pipe_init(pipe)
-        Async do 
-
-        end
-      end
-
-      def on_container_init(container)
-      end
-
-    end
+describe "testes básicos em ambientes diferente" do
+  it "Devo conseguir fazer o 'hello world' apenas com método 'flow' (task)" do 
+    Async do |task|
 
 
-    it 'deve criar um serviço e ser capaz de utiliza-lo' do 
       lotus = Lotus::Activity::Container.new()
+      lotus.name = 'hello world'
+      lotus.pipefy HelloWorld
 
-      lotus.pipe(SayHello, Lotus::Method::Flow)
-
-      name_service = NameService.new()
-      name_service.name = 'henrique'
-      
-      lotus.pipe(SayWorld, Lotus::Method::Flow, services: [name_service])
-      
-      app = lotus.compile Lotus::Enviroment::Task
-      app.run name: "Henrique" do |resp|
-        assert_equal resp, "Hello, world! Henrique"
-      end.await()
-    end
-
-    it 'deve criar um serviço que puxa dados de outro serviço' do 
-      lotus = Lotus::Activity::Container.new()
-    
-      lotus.pipe(SayHello, Lotus::Method::Flow)
-
-      yaml_service = YamlLoader.new()
-
-      name_service = NameService.new(yaml_service)
-      name_service.name = 'henrique'
-      
-      lotus.pipe(SayWorld, Lotus::Method::Flow, services: [name_service])
-
-
-    end
-
-    class N9N::Client < Lotus::Activity::Service
-
-      def initialize()
-        @lotus = []
-      end
-
-      def on_lotus_load(lotus)
-        @lotus << lotus.build()
-      end
-
-
-      def on_request_received(request, response)
-        request.headers 
-        request.body
-        request.query
+      @resp = nil
+      app = lotus.new do |it|
+        @resp = it
         
-
-        return N9N::Response
-          .status(200)
-          .body({teste: 200})
-          .headers(request.headers)
-         
-
-
       end
+
+      task.sleep 1
+      app.call()
+      task.sleep 1
+
+      assert_equal "Hello, world!", @resp 
+      app.call END_APP
+
+      task.stop()
     end
+  end
 
-
-
-
-
-    it 'deve criar um serviço que tenha a capacidade de chamar métodos do pipe' do 
+  it "Conseguir criar um sistema ETL simples" do
+    Async do |task|
       lotus = Lotus::Activity::Container.new()
-      print_callback = PrintCallback.new()
-      lotus.pipe(SayHelloWithCallback, Lotus::Method::Flow, services: print_callback)
-    end
+      lotus.name = 'ETL'
+      lotus.pipefy Extract
+      lotus.pipefy Transform
+      lotus.pipefy Load
 
-    it 'deve ser capaz de criar um que é executado em um período de tempo' do 
+      @resp = []
 
-    end
-
-    it 'deve criar um serviço especial que me permite por meio de http buildar (compilar) e também executar e receber parametros de execução, ou seja, o serviço terá uma inversão de controle' do 
-      n9n = N9n.new 'localhost://3000'
-      
-      lotus1 = Lotus::Activity::Container.new
-      lotus1.name 'app1'
-      lotus1.service n9n
-      lotus1.pipe SayHello, Lotus::Method::Flow
-      
-      lotus2 = Lotus::Activity::Container.new
-      lotus1.name 'app2'
-      lotus2.service n9n
-      lotus2.pipe SayHello, Lotus::Method::Flow
-      
-
-      Async do 
-        n9n.init()
+      app = lotus.new do |resp|
+        @resp << resp
       end
 
-      options = make_request()
-      assert_equal options, {
-          options: ['app1', 'app2']
-      }
+      app.call(10)
+      task.sleep 1
+      
+      
+      assert_equal ["data: transforming: 0",
+         "data: transforming: 1",
+          "data: transforming: 2",
+           "data: transforming: 3",
+            "data: transforming: 4",
+             "data: transforming: 5",
+              "data: transforming: 6",
+               "data: transforming: 7",
+                "data: transforming: 8",
+                 "data: transforming: 9"], @resp 
 
+      
+      task.stop()
     end
   end
 end
+
+
+
+
+
+describe "testes básicos com serviços" do 
+
+  it "ser capaz de carregar um serviço simples e usa uma variável dele" do
+    Async do |task|
+      print_service = PrintService.new('henrique')
+      
+      lotus = Lotus::Activity::Container.new App
+      lotus.name = 'hello world with service'
+      lotus.pipefy HelloWithServiceArgs, print_service: print_service  
+
+      app = lotus.new do |resp|
+        @resp = resp
+      end
+      
+      app.call()
+
+      task.sleep 1
+      
+
+      assert_equal "Hello, henrique", @resp
+      task.stop()
+
+    end 
+  end
+
+  it "ser capaz de carregar um serviço simples e usa uma variável dele (com delegação)" do
+    Async do |task|
+      print_service = PrintService.new('henrique')
+      
+      lotus = Lotus::Activity::Container.new App
+      lotus.name = 'hello world with service'
+      lotus.pipefy HelloWithServiceArgs, print_service: print_service  
+
+      app = lotus.new do |resp|
+        @resp = resp
+      end
+      
+      app.call()
+
+      task.sleep 1
+      
+
+      assert_equal "Hello, henrique", @resp
+      task.stop()
+
+    end 
+  end
+
+  describe 'gerenciamento de processos' do 
+    it 'capaz de iniciar três tarefas e pegar um relatório do estado de execução dos mesmo (funcionando)' do 
+      lotus = Lotus::Activity::Container.new App
+      lotus.name = 'hello world with big delay'
+      lotus.pipefy HelloWithBigDelay
+
+      @r1 = nil
+      @r2 = nil
+      @r3 = nil
+      
+      app1 = lotus.new do |resp|
+        @r1 = resp
+      end
+
+      app2 = lotus.new do |resp|
+        @r2 = resp
+      end
+
+      lotus = Lotus::Activity::Container.new App
+      lotus.name = 'hello world with big delay and error'
+      lotus.pipefy HelloWithBigDelayAndError
+
+      app3 = lotus.new do |resp|
+        @r3 = resp
+      end
+
+
+
+      expected = {
+        'hello world with big delay' => {
+          'applications' => {
+            'hello world with big delay <#1>' => 'running',
+            'hello world with big delay <#2>' => 'running',
+          }
+        },
+        'hello world with big delay and error' => {
+          'applications' => {
+            'hello world with big delay and error <#1>' => 'running',
+          }
+        }
+      }
+
+      assert_equal expected, Lotus::Activity::Container.info('applications')
+
+      app1.stop()
+
+
+      expected = {
+        'hello world with big delay' => {
+          'applications' => {
+            'hello world with big delay <#1>' => 'stopped',
+            'hello world with big delay <#2>' => 'running',
+          }
+        },
+        'hello world with big delay and error' => {
+          'applications' => {
+            'hello world with big delay and error <#1>' => 'running',
+          }
+        }
+      }
+
+      assert_equal expected, Lotus::Activity::Container.info('applications')
+
+      task.sleep 5
+
+
+      expected = {
+        'hello world with big delay' => {
+          'applications' => {
+            'hello world with big delay <#1>' => 'stopped',
+            'hello world with big delay <#2>' => 'finished',
+          }
+        },
+        'hello world with big delay and error' => {
+          'applications' => {
+            'hello world with big delay and error <#1>' => 'error',
+          }
+        }
+      }
+
+      assert_equal expected, Lotus::Activity::Container.info('applications')
+
+
+    end
+
+    it 'capaz de utilizar um serviço para fazer uma comunicação interna e externa' do 
+
+    end
+
+  end
+
+
+  describe 'controle por serviços' do 
+    it 'capaz de injetar um serviço em um dos pipes que conecta a parte interna com a parte externa' do 
+
+    end
+  end
+
+
+  it 'ter um pipe especial do tipo MapReduce para distribuir as cargas de trabalho entre vários clusters' do 
+
+  end
+
+end
+
