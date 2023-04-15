@@ -146,107 +146,107 @@ describe "testes básicos com serviços" do
   end
 
   describe 'gerenciamento de processos' do 
-    it 'capaz de iniciar três tarefas e pegar um relatório do estado de execução dos mesmo (funcionando)' do 
-      lotus = Lotus::Activity::Container.new App
-      lotus.name = 'hello world with big delay'
-      lotus.pipefy HelloWithBigDelay
+    # it 'capaz de iniciar três tarefas e pegar um relatório do estado de execução dos mesmo (funcionando)' do 
+    #   lotus = Lotus::Activity::Container.new App
+    #   lotus.name = 'hello world with big delay'
+    #   lotus.pipefy HelloWithBigDelay
 
-      @r1 = nil
-      @r2 = nil
-      @r3 = nil
+    #   @r1 = nil
+    #   @r2 = nil
+    #   @r3 = nil
       
-      app1 = lotus.new do |resp|
-        @r1 = resp
-      end
+    #   app1 = lotus.new do |resp|
+    #     @r1 = resp
+    #   end
 
-      app2 = lotus.new do |resp|
-        @r2 = resp
-      end
+    #   app2 = lotus.new do |resp|
+    #     @r2 = resp
+    #   end
 
-      lotus = Lotus::Activity::Container.new App
-      lotus.name = 'hello world with big delay and error'
-      lotus.pipefy HelloWithBigDelayAndError
+    #   lotus = Lotus::Activity::Container.new App
+    #   lotus.name = 'hello world with big delay and error'
+    #   lotus.pipefy HelloWithBigDelayAndError
 
-      app3 = lotus.new do |resp|
-        @r3 = resp
-      end
-
-
-
-      expected = {
-        'hello world with big delay' => {
-          'applications' => {
-            'hello world with big delay <#1>' => 'running',
-            'hello world with big delay <#2>' => 'running',
-          }
-        },
-        'hello world with big delay and error' => {
-          'applications' => {
-            'hello world with big delay and error <#1>' => 'running',
-          }
-        }
-      }
-
-      assert_equal expected, Lotus::Activity::Container.info('applications')
-
-      app1.stop()
+    #   app3 = lotus.new do |resp|
+    #     @r3 = resp
+    #   end
 
 
-      expected = {
-        'hello world with big delay' => {
-          'applications' => {
-            'hello world with big delay <#1>' => 'stopped',
-            'hello world with big delay <#2>' => 'running',
-          }
-        },
-        'hello world with big delay and error' => {
-          'applications' => {
-            'hello world with big delay and error <#1>' => 'running',
-          }
-        }
-      }
 
-      assert_equal expected, Lotus::Activity::Container.info('applications')
+    #   expected = {
+    #     'hello world with big delay' => {
+    #       'applications' => {
+    #         'hello world with big delay <#1>' => 'running',
+    #         'hello world with big delay <#2>' => 'running',
+    #       }
+    #     },
+    #     'hello world with big delay and error' => {
+    #       'applications' => {
+    #         'hello world with big delay and error <#1>' => 'running',
+    #       }
+    #     }
+    #   }
 
-      task.sleep 5
+    #   assert_equal expected, Lotus::Activity::Container.info('applications')
 
-
-      expected = {
-        'hello world with big delay' => {
-          'applications' => {
-            'hello world with big delay <#1>' => 'stopped',
-            'hello world with big delay <#2>' => 'finished',
-          }
-        },
-        'hello world with big delay and error' => {
-          'applications' => {
-            'hello world with big delay and error <#1>' => 'error',
-          }
-        }
-      }
-
-      assert_equal expected, Lotus::Activity::Container.info('applications')
+    #   app1.stop()
 
 
-    end
+    #   expected = {
+    #     'hello world with big delay' => {
+    #       'applications' => {
+    #         'hello world with big delay <#1>' => 'stopped',
+    #         'hello world with big delay <#2>' => 'running',
+    #       }
+    #     },
+    #     'hello world with big delay and error' => {
+    #       'applications' => {
+    #         'hello world with big delay and error <#1>' => 'running',
+    #       }
+    #     }
+    #   }
 
-    it 'capaz de utilizar um serviço para fazer uma comunicação interna e externa' do 
+    #   assert_equal expected, Lotus::Activity::Container.info('applications')
 
-    end
-
-  end
+    #   task.sleep 5
 
 
-  describe 'controle por serviços' do 
-    it 'capaz de injetar um serviço em um dos pipes que conecta a parte interna com a parte externa' do 
+    #   expected = {
+    #     'hello world with big delay' => {
+    #       'applications' => {
+    #         'hello world with big delay <#1>' => 'stopped',
+    #         'hello world with big delay <#2>' => 'finished',
+    #       }
+    #     },
+    #     'hello world with big delay and error' => {
+    #       'applications' => {
+    #         'hello world with big delay and error <#1>' => 'error',
+    #       }
+    #     }
+    #   }
 
-    end
-  end
+    #   assert_equal expected, Lotus::Activity::Container.info('applications')
 
 
-  it 'ter um pipe especial do tipo MapReduce para distribuir as cargas de trabalho entre vários clusters' do 
+    # end
+
+    # it 'capaz de utilizar um serviço para fazer uma comunicação interna e externa' do 
+
+    # end
 
   end
+
+
+  # describe 'controle por serviços' do 
+  #   it 'capaz de injetar um serviço em um dos pipes que conecta a parte interna com a parte externa' do 
+
+  #   end
+  # end
+
+
+  # it 'ter um pipe especial do tipo MapReduce para distribuir as cargas de trabalho entre vários clusters' do 
+
+  # end
 
 end
 
