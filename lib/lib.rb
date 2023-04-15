@@ -238,6 +238,13 @@ module Lotus
 
     class Container
       attr_accessor :name
+      
+      @@applications = {} # Adicione esta linha
+
+      def self.info(*informations)
+        # Modifique o método info para retornar informações sobre as aplicações
+        @@applications
+      end
 
       def initialize(app = Lotus::Activity::Application)
         @app = app
@@ -249,8 +256,25 @@ module Lotus
       end
 
       def new(services = [], &blk)
+        # Atualize @@applications cada vez que uma nova aplicação for criada
+        app_instance = @app.new(@activities, services, &blk)
+        app_name = @name.dup
 
-        @app.new(@activities, services, &blk)
+        if @@applications[app_name].nil?
+          @@applications[app_name] = {
+            'applications' => {}
+          }
+        end
+
+        app_instance_id = "#{app_name} <##{@@applications[app_name]['applications'].size + 1}>"
+        @@applications[app_name]['applications'][app_instance_id] = 'running'
+
+        # Adicione um método update_status na instância da aplicação
+        app_instance.define_singleton_method(:update_status) do |status|
+          @@applications[app_name]['applications'][app_instance_id] = status
+        end
+
+        app_instance
       end
     end
   end
