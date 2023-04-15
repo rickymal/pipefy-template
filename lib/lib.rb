@@ -91,6 +91,28 @@ module Lotus
   end
 end
 
+class CustomException < Exception ; end
+
+class HelloWithBigDelay
+  include Lotus::DefaultInitializer
+  extend Lotus::Method::Flow
+
+  def call(data = nil)
+    sleep 10
+    return 'Hello, world!'
+  end
+end
+
+class HelloWithBigDelayAndError
+  include Lotus::DefaultInitializer
+  extend Lotus::Method::Flow
+
+  def call(data = nil)
+    sleep 10
+    raise CustomException, "Um erro personalizado"
+  end
+end
+
 class HelloWorld
   include Lotus::DefaultInitializer
   extend Lotus::Method::Flow
@@ -238,11 +260,10 @@ module Lotus
 
     class Container
       attr_accessor :name
-      
-      @@applications = {} # Adicione esta linha
+      @@applications = {}
+
 
       def self.info(*informations)
-        # Modifique o método info para retornar informações sobre as aplicações
         @@applications
       end
 
@@ -254,6 +275,10 @@ module Lotus
       def pipefy(element, **services)
         @activities << [element, services]
       end
+
+      # def new(services = [], &blk)
+      #   @app.new(@activities, services, &blk)
+      # end
 
       def new(services = [], &blk)
         # Atualize @@applications cada vez que uma nova aplicação for criada
@@ -274,7 +299,7 @@ module Lotus
           @@applications[app_name]['applications'][app_instance_id] = status
         end
 
-        app_instance
+        return app_instance
       end
     end
   end
