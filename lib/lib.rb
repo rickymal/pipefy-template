@@ -5,7 +5,7 @@ END_APP = :_enum_end_app
 
 module Lotus
   module DefaultInitializer
-    def initialize(service = {})
+    def _lotus_service_loading(service = {})
         
       service.each do |name, srv|
         self.singleton_class.attr_accessor name
@@ -19,13 +19,24 @@ module Lotus
   module Method
     module Flow
       
-      
+      def on_stop()
+        puts "Parando aplicação #{self}"
+        puts "Parando aplicação #{self}"
+        
+        @tsk.stop()
+        @instance = nil
+      end
 
-      def create_pipe_task(reactor, input_queue, output_queue, service)
-        instance = self.new(service) rescue binding.pry
-        reactor.async do
+      def create_pipe_task(pipe, reactor, input_queue, output_queue, services)
+        
+        @instance = pipe.new()
+        if @instance.respond_to? "_lotus_service_loading"
+          @instance._lotus_service_loading(services)
+        end
+
+        @tsk = reactor.async do
           while (response = input_queue.dequeue) != END_APP
-            output_queue.enqueue instance.call(response)
+            output_queue.enqueue @instance.call(response)
           end
         end
       end
@@ -214,14 +225,62 @@ module Lotus
     end
   end 
 
+  require 'objspace'
+
   module Activity
     class Pipe
       def next
       end
     end
 
+    class Task
+      def initialize(pipe, reactor, input_queue, output_queue, services)
+        @pipe = pipe
+        @reactor = reactor
+        @input_queue = input_queue
+        @output_queue = output_queue
+        @services = services
+
+        ObjectSpace.define_finalizer(self, self.class.finalize(self))
+      end
+
+      def self.finalize(obj)
+        return lambda do |status|
+          obj.stop()
+        end
+      end
+
+      def _create_pipe_task()
+        create_pipe_task(@pipe, @reactor, @input_queue, @output_queue, @services)
+      end
+
+      def stop()
+        self.on_stop()
+      end
+
+    end
+
     class Application
-      def initialize(activities, services, &blk)
+
+      def stop()
+        self.update_status 'stopping'
+        @tasks.each do |task|
+          task.stop()
+        end
+        self.update_status 'stopped'
+      end
+
+
+      def finish()
+        self.update_status 'finishing'
+        @task.each do |task|
+          task.on_finished()
+        end
+        self.update_status 'finished'
+      end
+
+
+      def initialize(activities, global_services, &blk)
         pipe_flow = QueuePathBuilder.new
         @activities = activities
         
@@ -233,12 +292,19 @@ module Lotus
         
         input_queue, output_queue = pipe_flow.next
         @input_queue = input_queue
-
+        @tasks = [] 
+        
         @activities.each do |activity|
           
-          pipe, service = activity
+          pipe, executor, services = activity
+          task = Task.new(pipe, reactor, input_queue, output_queue, services)
+          task.singleton_class.include executor
           
-          pipe_instance = pipe.create_pipe_task(reactor, input_queue, output_queue, service) rescue binding.pry
+          # Aqui occorre erro 
+          task._create_pipe_task()
+          @tasks << task
+
+          # pipe_instance = pipe.create_pipe_task(reactor, input_queue, output_queue, service) rescue 
           input_queue, output_queue = pipe_flow.next
           @output_queue = input_queue
         end
@@ -272,8 +338,8 @@ module Lotus
         @activities = []
       end
 
-      def pipefy(element, **services)
-        @activities << [element, services]
+      def pipefy(element, executor = Lotus::Method::Flow, **services)
+        @activities << [element, executor, services]
       end
 
       # def new(services = [], &blk)
