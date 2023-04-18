@@ -27,6 +27,11 @@ module Lotus
         @instance = nil
       end
 
+      def on_error()
+        @tsk.stop()
+        @instance = nil
+      end
+
       def create_pipe_task(pipe, reactor, input_queue, output_queue, services)
         
         @instance = pipe.new()
@@ -36,7 +41,14 @@ module Lotus
 
         @tsk = reactor.async do
           while (response = input_queue.dequeue) != END_APP
-            output_queue.enqueue @instance.call(response)
+            begin
+              resp = @instance.call(response)
+            rescue CustomException => exception
+              # Este método precisa chamar o 'update_status' do application
+              self.throw_pipeline('error', exception)
+            else
+              output_queue.enqueue resp
+            end
           end
         end
       end
@@ -119,7 +131,7 @@ class HelloWithBigDelayAndError
   extend Lotus::Method::Flow
 
   def call(data = nil)
-    sleep 10
+    sleep 2
     raise CustomException, "Um erro personalizado"
   end
 end

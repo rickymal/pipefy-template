@@ -273,7 +273,8 @@
           }
 
           assert_equal expected, Lotus::Activity::Container.info('applications')
-
+          app3.call 10
+          task.sleep 500000
 
           expected = {
             'hello world with big delay' => {
