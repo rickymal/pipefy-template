@@ -65,64 +65,64 @@
   end
 
   describe "testes básicos em ambientes diferente" do
-    # it "Devo conseguir fazer o 'hello world' apenas com método 'flow' (task)" do 
-    #   Async do |task|
+    it "Devo conseguir fazer o 'hello world' apenas com método 'flow' (task)" do 
+      Async do |task|
 
 
-    #     lotus = Lotus::Activity::Container.new()
-    #     lotus.name = 'hello world'
-    #     lotus.pipefy HelloWorld
+        lotus = Lotus::Activity::Container.new()
+        lotus.name = 'hello world'
+        lotus.pipefy HelloWorld, Lotus::Method::Flow
 
-    #     @resp = nil
-    #     app = lotus.new do |it|
-    #       @resp = it
+        @resp = nil
+        app = lotus.new do |it|
+          @resp = it
           
-    #     end
+        end
 
-    #     task.sleep 1
-    #     app.call()
-    #     task.sleep 1
+        task.sleep 1
+        app.call()
+        task.sleep 1
 
-    #     assert_equal "Hello, world!", @resp 
-    #     app.call END_APP
+        assert_equal "Hello, world!", @resp 
+        app.call END_APP
 
-    #     task.stop()
-    #   end
-    # end
+        task.stop()
+      end
+    end
 
-    # it "Conseguir criar um sistema ETL simples" do
-    #   Async do |task|
-    #     lotus = Lotus::Activity::Container.new()
-    #     lotus.name = 'ETL'
-    #     lotus.pipefy Extract
-    #     lotus.pipefy Transform
-    #     lotus.pipefy Load
+    it "Conseguir criar um sistema ETL simples" do
+      Async do |task|
+        lotus = Lotus::Activity::Container.new()
+        lotus.name = 'ETL'
+        lotus.pipefy Extract, Lotus::Method::Stream
+        lotus.pipefy Transform, Lotus::Method::Actor
+        lotus.pipefy Load, Lotus::Method::Flow
 
-    #     @resp = []
+        @resp = []
 
-    #     app = lotus.new do |resp|
-    #       @resp << resp
-    #     end
+        app = lotus.new do |resp|
+          @resp << resp
+        end
 
-    #     app.call(10)
-    #     task.sleep 1
+        app.call(10)
+        task.sleep 1
         
         
-    #     assert_equal ["data: transforming: 0",
-    #        "data: transforming: 1",
-    #         "data: transforming: 2",
-    #          "data: transforming: 3",
-    #           "data: transforming: 4",
-    #            "data: transforming: 5",
-    #             "data: transforming: 6",
-    #              "data: transforming: 7",
-    #               "data: transforming: 8",
-    #                "data: transforming: 9"], @resp 
+        assert_equal ["data: transforming: 0",
+           "data: transforming: 1",
+            "data: transforming: 2",
+             "data: transforming: 3",
+              "data: transforming: 4",
+               "data: transforming: 5",
+                "data: transforming: 6",
+                 "data: transforming: 7",
+                  "data: transforming: 8",
+                   "data: transforming: 9"], @resp 
 
         
-    #     task.stop()
-    #   end
-    # end
+        task.stop()
+      end
+    end
   end
 
 
@@ -214,7 +214,7 @@
           
           lotus = Lotus::Activity::Container.new App
           lotus.name = 'hello world with big delay'
-          lotus.pipefy HelloWithBigDelay
+          lotus.pipefy HelloWithBigDelay, Lotus::Method::Flow
 
           @r1 = nil
           @r2 = nil
@@ -230,7 +230,7 @@
 
           lotus = Lotus::Activity::Container.new App
           lotus.name = 'hello world with big delay and error'
-          lotus.pipefy HelloWithBigDelayAndError
+          lotus.pipefy HelloWithBigDelayAndError, Lotus::Method::Flow
 
           app3 = lotus.new do |resp|
             @r3 = resp
@@ -292,7 +292,7 @@
 
 
           assert_hashes_equal(expected, Lotus::Activity::Container.info('applications'))
-          binding.pry
+
           # assert_equal expected, Lotus::Activity::Container.info('applications')
 
           $stdout = original_stdout
@@ -305,18 +305,5 @@
 
     
     end
-
-
-    # describe 'controle por serviços' do 
-    #   it 'capaz de injetar um serviço em um dos pipes que conecta a parte interna com a parte externa' do 
-
-    #   end
-    # end
-
-
-    # it 'ter um pipe especial do tipo MapReduce para distribuir as cargas de trabalho entre vários clusters' do 
-
-    # end
-
   end
 

@@ -28,13 +28,14 @@ module Lotus
       end
 
       def on_error(exception = nil)
-
-        @tsk.stop()
+        # binding.pry
+        # @tsk.stop()
+        # binding.pry
         @instance = nil
       end
 
       def create_pipe_task(pipe, reactor, input_queue, output_queue, services)
-        
+        @input_queue = input_queue
         @instance = pipe.new()
         if @instance.respond_to? "_lotus_service_loading"
           @instance._lotus_service_loading(services)
@@ -57,11 +58,32 @@ module Lotus
     end
 
     module Stream
-      def create_pipe_task(reactor, input_queue, output_queue, service)
-        instance = self.new(service)
-        reactor.async do 
+
+      def on_stop()
+        puts "Parando aplicação #{self}"
+        puts "Parando aplicação #{self}"
+        
+        @tsk.stop()
+        @instance = nil
+      end
+
+      def on_error(exception = nil)
+        # binding.pry
+        # @tsk.stop()
+        # binding.pry
+        @instance = nil
+      end
+
+      def create_pipe_task(pipe, reactor, input_queue, output_queue, services)
+        
+        @instance = pipe.new
+        if @instance.respond_to? "_lotus_service_loading"
+          @instance._lotus_service_loading(services)
+        end
+        
+        @tsk = reactor.async do 
           while (response = input_queue.dequeue) != END_APP
-            instance.call(response) do |yld|
+            @instance.call(response) do |yld|
               output_queue.enqueue yld
             end
           end
@@ -71,9 +93,27 @@ module Lotus
     
     # Tem que ser uma classe, pois preciso passar uma instância.
     module Actor
-      def create_pipe_task(reactor, input_queue, output_queue, service)
+
+      def on_stop()
+        puts "Parando aplicação #{self}"
+        puts "Parando aplicação #{self}"
         
-        ractor_pool = 10.times.map do 
+        
+        @tsk.stop()
+        @instance = nil
+      end
+
+      def on_error(exception = nil)
+        # binding.pry
+        # @tsk.stop()
+        # binding.pry
+        @instance = nil
+      end
+
+
+      def create_pipe_task(pipe, reactor, input_queue, output_queue, service)
+        
+        @ractor_pool = 10.times.map do 
           Ractor.new do 
             r_instances = Ractor.receive()
 
@@ -92,16 +132,16 @@ module Lotus
           end
         end
 
-        ractor_pool.each do |ractor|
+        @ractor_pool.each do |ractor|
           # Danado para gerar erros, mas vamos tentar
           # ractor.send self.new(service), move: true
 
           # melhor não 
-          ractor.send self.new(), move: true
+          ractor.send pipe.new(), move: true
         end
         
-        cycle = ractor_pool.cycle()
-        reactor.async do |tsk|
+        cycle = @ractor_pool.cycle()
+        @tsk = reactor.async do |tsk|
           while (response = input_queue.dequeue) != END_APP
             actor = cycle.next()
             tsk.async do 
@@ -123,7 +163,7 @@ class HelloWithBigDelay
   extend Lotus::Method::Flow
 
   def call(data = nil)
-    sleep 10
+    sleep 1
     return 'Hello, world!'
   end
 end
@@ -133,7 +173,7 @@ class HelloWithBigDelayAndError
   extend Lotus::Method::Flow
 
   def call(data = nil)
-    sleep 2
+    sleep 1
     raise CustomException, "Um erro personalizado"
   end
 end
@@ -289,12 +329,9 @@ module Lotus
         
         self.update_status 'erroring'
         @tasks.each do |task|
-
-          task.on_error(exception)
-
+          task.on_error(exception) if task.respond_to? 'on_error'
+          
         end
-
-        binding.pry # não chega aqui
         self.update_status 'error'
       end
 
@@ -357,7 +394,7 @@ module Lotus
         @activities = []
       end
 
-      def pipefy(element, executor = Lotus::Method::Flow, **services)
+      def pipefy(element, executor, **services)
         @activities << [element, executor, services]
       end
 
