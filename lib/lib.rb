@@ -27,7 +27,8 @@ module Lotus
         @instance = nil
       end
 
-      def on_error()
+      def on_error(exception = nil)
+
         @tsk.stop()
         @instance = nil
       end
@@ -45,7 +46,8 @@ module Lotus
               resp = @instance.call(response)
             rescue CustomException => exception
               # Este método precisa chamar o 'update_status' do application
-              self.throw_pipeline('error', exception)
+              
+              @ctx.throw_pipeline(exception)
             else
               output_queue.enqueue resp
             end
@@ -246,13 +248,13 @@ module Lotus
     end
 
     class Task
-      def initialize(pipe, reactor, input_queue, output_queue, services)
+      def initialize(ctx, pipe, reactor, input_queue, output_queue, services)
+        @ctx = ctx
         @pipe = pipe
         @reactor = reactor
         @input_queue = input_queue
         @output_queue = output_queue
         @services = services
-
         ObjectSpace.define_finalizer(self, self.class.finalize(self))
       end
 
@@ -283,12 +285,17 @@ module Lotus
       end
 
 
-      def finish()
-        self.update_status 'finishing'
-        @task.each do |task|
-          task.on_finished()
+      def throw_pipeline(exception)
+        
+        self.update_status 'erroring'
+        @tasks.each do |task|
+
+          task.on_error(exception)
+
         end
-        self.update_status 'finished'
+
+        binding.pry # não chega aqui
+        self.update_status 'error'
       end
 
 
@@ -309,7 +316,7 @@ module Lotus
         @activities.each do |activity|
           
           pipe, executor, services = activity
-          task = Task.new(pipe, reactor, input_queue, output_queue, services)
+          task = Task.new(self, pipe, reactor, input_queue, output_queue, services)
           task.singleton_class.include executor
           
           # Aqui occorre erro 
@@ -376,6 +383,14 @@ module Lotus
         app_instance.define_singleton_method(:update_status) do |status|
           @@applications[app_name]['applications'][app_instance_id] = status
         end
+
+        # Adicione um método update_status na instância da aplicação
+        
+        # app_instance.define_singleton_method(:throw_pipeline) do |exception|
+        #   pp 'hello'
+        #   
+        #   self.throw_error(exception)
+        # end
 
         return app_instance
       end

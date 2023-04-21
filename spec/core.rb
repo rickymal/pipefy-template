@@ -274,7 +274,7 @@
 
           assert_equal expected, Lotus::Activity::Container.info('applications')
           app3.call 10
-          task.sleep 500000
+          task.sleep 5
 
           expected = {
             'hello world with big delay' => {
@@ -292,6 +292,7 @@
 
 
           assert_hashes_equal(expected, Lotus::Activity::Container.info('applications'))
+          binding.pry
           # assert_equal expected, Lotus::Activity::Container.info('applications')
 
           $stdout = original_stdout
@@ -302,10 +303,7 @@
 
       end
 
-      it 'capaz de utilizar um serviço para fazer uma comunicação interna e externa' do 
-
-      end
-
+    
     end
 
 
