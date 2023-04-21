@@ -20,9 +20,7 @@ module Lotus
     module Flow
       
       def on_stop()
-        puts "Parando aplicação #{self}"
-        puts "Parando aplicação #{self}"
-        
+
         @tsk.stop()
         @instance = nil
       end
@@ -317,6 +315,7 @@ module Lotus
     class Application
 
       def stop()
+        
         self.update_status 'stopping'
         @tasks.each do |task|
           task.stop()
@@ -392,6 +391,10 @@ module Lotus
       def initialize(app = Lotus::Activity::Application)
         @app = app
         @activities = []
+      end
+
+      def self.clear_application_info()
+        @@applications = {}
       end
 
       def pipefy(element, executor, **services)

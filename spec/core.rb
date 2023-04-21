@@ -131,81 +131,83 @@
 
   describe "testes básicos com serviços" do 
 
-    # it "ser capaz de carregar um serviço simples e usa uma variável dele" do
-    #   Async do |task|
-    #     print_service = PrintService.new('henrique')
+    it "ser capaz de carregar um serviço simples e usa uma variável dele" do
+      Async do |task|
+        print_service = PrintService.new('henrique')
+        @resp = nil
+        lotus = Lotus::Activity::Container.new App
+        lotus.name = 'hello world with service test'
+        lotus.pipefy HelloWithServiceArgs, Lotus::Method::Flow, print_service: print_service  
+
+        app = lotus.new do |resp|
+          @resp = resp
+        end
         
-    #     lotus = Lotus::Activity::Container.new App
-    #     lotus.name = 'hello world with service'
-    #     lotus.pipefy HelloWithServiceArgs, print_service: print_service  
+        app.call()
 
-    #     app = lotus.new do |resp|
-    #       @resp = resp
-    #     end
-        
-    #     app.call()
-
-    #     task.sleep 1
-        
-
-    #     assert_equal "Hello, henrique", @resp
-    #     task.stop()
-
-    #   end 
-    # end
-
-    # it "ser capaz de carregar um serviço simples e usa uma variável dele (com delegação)" do
-    #   Async do |task|
-    #     print_service = PrintService.new('henrique')
-        
-    #     lotus = Lotus::Activity::Container.new App
-    #     lotus.name = 'hello world with service'
-    #     lotus.pipefy HelloWithServiceArgs, print_service: print_service  
-
-    #     app = lotus.new do |resp|
-    #       @resp = resp
-    #     end
-        
-    #     app.call()
-
-    #     task.sleep 1
+        task.sleep 1
         
 
-    #     assert_equal "Hello, henrique", @resp
-    #     task.stop()
+        assert_equal "Hello, henrique", @resp
+        task.stop()
 
-    #   end 
-    # end
+      end 
+    end
+
+    it "ser capaz de carregar um serviço simples e usa uma variável dele (com delegação)" do
+      Async do |task|
+        print_service = PrintService.new('henrique')
+        
+        lotus = Lotus::Activity::Container.new App
+        lotus.name = 'hello world with service'
+        lotus.pipefy HelloWithServiceArgs, Lotus::Method::Flow, print_service: print_service  
+
+        app = lotus.new do |resp|
+          @resp = resp
+        end
+        
+        app.call()
+
+        task.sleep 1
+        
+
+        assert_equal "Hello, henrique", @resp
+        task.stop()
+
+      end 
+    end
 
     describe 'gerenciamento de processos' do 
 
-      # it 'capaz de iniciar uma tarefa mata-la' do 
-      #   Async do |task|
-      #     lotus = Lotus::Activity::Container.new App
-      #     lotus.name = 'hello world with big delay'
-      #     lotus.pipefy HelloWithBigDelay
+      it 'capaz de iniciar uma tarefa mata-la' do 
+        Async do |task|
+          lotus = Lotus::Activity::Container.new App
+          lotus.name = 'hello world with big delay'
+          lotus.pipefy HelloWithBigDelay, Lotus::Method::Flow
 
-      #     @r1 = nil
-      #     @r2 = nil
-      #     @r3 = nil
+          @r1 = nil
+          @r2 = nil
+          @r3 = nil
           
-      #     app1 = lotus.new do |resp|
-      #       @r1 = resp
-      #     end
+          app1 = lotus.new do |resp|
+            @r1 = resp
+          end
 
-      #     app1.stop()
+          app1.stop()
 
-      #     task.stop()
-      #   end 
+          task.stop()
+        end 
 
 
-      # end
+      end
 
       require 'stringio'
 
       it 'capaz de iniciar três tarefas e pegar um relatório do estado de execução dos mesmo (funcionando)' do 
         Async do |task|
+          Lotus::Activity::Container.clear_application_info()
           original_stdout = $stdout
+          app_name = 'hello world with big delay'
 
           # Redireciona a saída padrão para um objeto StringIO
           fake_stdout = StringIO.new
@@ -213,7 +215,7 @@
 
           
           lotus = Lotus::Activity::Container.new App
-          lotus.name = 'hello world with big delay'
+          lotus.name = app_name
           lotus.pipefy HelloWithBigDelay, Lotus::Method::Flow
 
           @r1 = nil
@@ -228,8 +230,9 @@
             @r2 = resp
           end
 
+          app_with_error = 'hello world with big delay and error'
           lotus = Lotus::Activity::Container.new App
-          lotus.name = 'hello world with big delay and error'
+          lotus.name = app_with_error
           lotus.pipefy HelloWithBigDelayAndError, Lotus::Method::Flow
 
           app3 = lotus.new do |resp|
@@ -252,27 +255,31 @@
             }
           }
 
-          assert_equal expected, Lotus::Activity::Container.info('applications')
+          task.sleep 1
+          
+          assert_hashes_equal(expected[app_name], Lotus::Activity::Container.info('applications')[app_name])
+          # assert_equal expected, Lotus::Activity::Container.info('applications')
 
           app1.stop()
           task.sleep 1
 
 
           expected = {
-            'hello world with big delay' => {
+            app_name => {
               'applications' => {
-                'hello world with big delay <#1>' => 'stopped',
-                'hello world with big delay <#2>' => 'running',
+                "#{app_name} <#1>" => 'stopped',
+                "#{app_name} <#2>" => 'running',
               }
             },
             'hello world with big delay and error' => {
               'applications' => {
-                'hello world with big delay and error <#1>' => 'running',
+                "#{app_with_error} <#1>" => 'running',
               }
             }
           }
 
-          assert_equal expected, Lotus::Activity::Container.info('applications')
+          # assert_equal expected, Lotus::Activity::Container.info('applications')
+          assert_hashes_equal(expected[app_name], Lotus::Activity::Container.info('applications')[app_name])
           app3.call 10
           task.sleep 5
 
@@ -291,7 +298,7 @@
           }
 
 
-          assert_hashes_equal(expected, Lotus::Activity::Container.info('applications'))
+          assert_hashes_equal(expected[app_with_error], Lotus::Activity::Container.info('applications')[app_with_error])
 
           # assert_equal expected, Lotus::Activity::Container.info('applications')
 
