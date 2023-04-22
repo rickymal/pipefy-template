@@ -1,9 +1,9 @@
 
 Kamui
 # Lotus
-**O Projeto está passando por um processo de refatoração. Apaguei tudo e estou reescrevendo**
+**Projeto funcional, porém parado devido a outras prioridades até agosto de 2023. Caso queira utilizar, entrar em contato comigo para eu dar continuidade**
 
-Lotus é um framework para criar e gerenciar aplicativos assíncronos e pipelines de processamento de dados. Ele permite a criação de aplicativos modulares e extensíveis, com suporte para orquestração, agendamento e integração com serviços externos. Além disso, oferece uma interface no-code, facilitando o desenvolvimento e a integração de aplicações.
+Lotus é um framework para criar e gerenciar aplicativos assíncronos e pipelines de processamento de dados. Ele permite a criação de aplicativos modulares e extensíveis, com suporte para orquestração, agendamento e integração com serviços externos.
 
 ## Características
 
@@ -11,7 +11,6 @@ Lotus é um framework para criar e gerenciar aplicativos assíncronos e pipeline
 - Orquestração de aplicativos em uma estrutura de árvore
 - Agendamento de tarefas e processos
 - Integração com serviços externos por meio de módulos de serviço
-- Interface no-code para desenvolvimento simplificado e visual
 
 ## Requisitos
 - saber programar
@@ -79,3 +78,6 @@ Certifique-se de atualizar os testes conforme apropriado.
 
 ## Licença
 MIT License
+
+## E-mail para contato
+Caso tenha interesse em utilizar a ferramente, entrar em contato comigo para que eu dê continuidade (henriquemauler@gmail.com)
