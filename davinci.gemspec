@@ -2,8 +2,8 @@
 
 Gem::Specification.new do |s|
     s.name        = 'lotus'
-    s.version     = '0.1.0'
-    s.date        = '2023-03-28'
+    s.version     = '0.1.1'
+    s.date        = '2022-06-28'
     s.summary     = "Seu Projeto - Um framework de gerenciamento e orquestração de aplicativos"
     s.description = "Seu Projeto é um framework que facilita a criação, gerenciamento e orquestração de aplicativos e serviços. Ele oferece uma arquitetura modular e escalável, permitindo a criação de soluções personalizadas e flexíveis."
     s.authors     = ["henrique mauler"]

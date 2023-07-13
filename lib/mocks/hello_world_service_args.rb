@@ -4,6 +4,5 @@ class HelloWithServiceArgs
   
     def call(data = nil)
       return "Hello, #{self.print_service.say_name}"
-  
     end
 end

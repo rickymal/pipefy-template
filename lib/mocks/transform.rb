@@ -4,7 +4,6 @@ class Transform
   
     def call(data = nil)
       res = "transforming: #{data}"
-      
       return res
     end
 end

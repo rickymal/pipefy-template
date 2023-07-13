@@ -3,6 +3,5 @@ class FeedBack
     extend Lotus::Method::Flow 
   
     def call(data = nil)
-  
     end
 end
