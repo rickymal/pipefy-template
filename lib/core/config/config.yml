@@ -1,0 +1,22 @@
+# config/config.yml
+
+development:
+  http_service:
+    host: 'localhost'
+    port: 3000
+  scheduler:
+    timezone: 'America/Sao_Paulo'
+
+production:
+  http_service:
+    host: '0.0.0.0'
+    port: 8000
+  scheduler:
+    timezone: 'America/Sao_Paulo'
+
+test:
+  http_service:
+    host: 'localhost'
+    port: 4000
+  scheduler:
+    timezone: 'America/Sao_Paulo'

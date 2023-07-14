@@ -1,0 +1,1 @@
+class CustomException < Exception ; end
